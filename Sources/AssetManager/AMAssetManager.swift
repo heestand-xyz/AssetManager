@@ -171,17 +171,17 @@ extension AMAssetManager {
     }
     
     public func importFile(
-        extension filenameExtension: String
+        filenameExtension: String
     ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importFile(extension: filenameExtension) { result in
+            importFile(filenameExtension: filenameExtension) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFile(
-        extension filenameExtension: String,
+        filenameExtension: String,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         importAsset(.file(extension: filenameExtension), from: .files) { result in
