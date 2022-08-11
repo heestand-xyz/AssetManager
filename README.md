@@ -1,3 +1,3 @@
-# AssetManager
+# Asset Manager
 
-A description of this package.
+Import, export and share files on iOS and macOS
