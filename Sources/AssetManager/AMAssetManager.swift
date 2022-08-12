@@ -6,7 +6,7 @@
 //
 
 import Foundation
-//import MultiViews
+import SwiftUI
 #if os(iOS)
 import UIKit
 #endif
@@ -20,11 +20,11 @@ public final class AMAssetManager: ObservableObject {
         case files
     }
     
-    enum AssetType {
+    public enum AssetType {
         case image
         case video
         case file(extension: String)
-        var types: [UTType] {
+        public var types: [UTType] {
             switch self {
             case .image:
                 return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .gif, .icns]
@@ -38,7 +38,7 @@ public final class AMAssetManager: ObservableObject {
             }
         }
         #if os(iOS)
-        var filter: PHPickerFilter? {
+        public var filter: PHPickerFilter? {
             switch self {
             case .image:
                 return .images
@@ -435,5 +435,122 @@ extension AMAssetManager {
             #endif
         }
     }
+}
+
+extension AMAssetManager {
     
+    func dropImages(providers: [NSItemProvider], completion: @escaping ([AMImage]) -> ()) {
+        
+        var providers: [NSItemProvider] = providers
+        var images: [AMImage] = []
+        
+        func next() {
+            
+            if !providers.isEmpty {
+                
+                let provider = providers.removeFirst()
+             
+                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                    
+                    provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, error in
+                        
+                        guard error == nil,
+                              let data: Data = data,
+                              let image = AMImage(data: data) else {
+                            next()
+                            return
+                        }
+                        
+                        images.append(image)
+                        
+                        next()
+                    }
+                } else {
+                    next()
+                }
+                
+            } else {
+                completion(images)
+                return
+            }
+        }
+        
+        next()
+    }
+    
+    func dropVideos(providers: [NSItemProvider], completion: @escaping ([URL]) -> ()) {
+        
+        var providers: [NSItemProvider] = providers
+        var urls: [URL] = []
+        
+        func next() {
+            
+            if !providers.isEmpty {
+                
+                let provider = providers.removeFirst()
+                
+                if provider.hasItemConformingToTypeIdentifier(UTType.video.identifier) {
+                    
+                    provider.loadFileRepresentation(forTypeIdentifier: UTType.video.identifier) { url, error in
+                        
+                        guard error == nil,
+                              let url: URL = url else {
+                            next()
+                            return
+                        }
+                        
+                        urls.append(url)
+                        
+                        next()
+                    }
+                } else {
+                    next()
+                }
+                
+            } else {
+                completion(urls)
+                return
+            }
+        }
+        
+        next()
+    }
+    
+    func dropURLs(type: UTType, providers: [NSItemProvider], completion: @escaping ([URL]) -> ()) {
+                
+        var providers: [NSItemProvider] = providers
+        var urls: [URL] = []
+        
+        func next() {
+            
+            if !providers.isEmpty {
+                
+                let provider = providers.removeFirst()
+                
+                if provider.canLoadObject(ofClass: AMImage.self) {
+                    
+                    provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, error in
+                        
+                        guard error == nil,
+                              let url: URL = url else {
+                            next()
+                            return
+                        }
+                        
+                        urls.append(url)
+                        
+                        next()
+                    }
+                } else {
+                    next()
+                }
+                
+            } else {
+                completion(urls)
+                return
+            }
+        }
+        
+        next()
+    }
 }

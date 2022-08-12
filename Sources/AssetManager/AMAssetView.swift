@@ -6,7 +6,7 @@
 
 import SwiftUI
 
-struct AMViewModifier<Content: View>: View {
+struct AMAssetView<Content: View>: View {
     
     @ObservedObject var assetManager: AMAssetManager
     
@@ -46,7 +46,7 @@ struct AMViewModifier<Content: View>: View {
 extension View {
     
     public func asset(manager: AMAssetManager) -> some View {
-        AMViewModifier(assetManager: manager) {
+        AMAssetView(assetManager: manager) {
             self
         }
     }
