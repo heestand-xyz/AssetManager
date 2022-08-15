@@ -14,7 +14,7 @@ extension AMAssetManager {
     
     func saveFile(url: URL,
                   title: String? = nil,
-                  completion: @escaping (Error?) -> ()) {
+                  completion: ((Error?) -> ())? = nil) {
         do {
             
             let data: Data = try Data(contentsOf: url)
@@ -27,19 +27,19 @@ extension AMAssetManager {
             savePanel.begin { response in
                 
                 guard response != .cancel, let url: URL = savePanel.url else {
-                    completion(nil)
+                    completion?(nil)
                     return
                 }
                 
                 do {
                     try data.write(to: url)
-                    completion(nil)
+                    completion?(nil)
                 } catch {
-                    completion(error)
+                    completion?(error)
                 }
             }
         } catch {
-            completion(error)
+            completion?(error)
         }
     }
 }

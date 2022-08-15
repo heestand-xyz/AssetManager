@@ -67,6 +67,19 @@ public final class AMAssetManager: ObservableObject {
         }
     }
     
+    public enum ImageAssetFormat {
+        case png
+        case jpg(compressionQuality: CGFloat)
+        var filenameExtension: String {
+            switch self {
+            case .png:
+                return "png"
+            case .jpg:
+                return "jpg"
+            }
+        }
+    }
+    
     #if os(iOS)
     
     @Published var showOpenFilePicker: Bool = false
@@ -83,7 +96,7 @@ public final class AMAssetManager: ObservableObject {
     @Published var showShare: Bool = false
     var shareItem: Any?
     
-    private var imageSaveCompletionHandler: ((Error?) -> ())?
+//    private var imageSaveCompletionHandler: ((Error?) -> ())?
     
     #endif
     
@@ -94,12 +107,12 @@ extension AMAssetManager {
     
     #if os(iOS)
     
-    func share(image: AMImage) {
+    public func share(image: AMImage) {
         shareItem = image
         showShare = true
     }
     
-    func share(url: URL) {
+    public func share(url: URL) {
         shareItem = url
         showShare = true
     }
@@ -231,6 +244,53 @@ extension AMAssetManager {
         }
     }
     
+    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
+            saveImageToFiles(image, as: format) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume()
+            }
+        }
+    }
+    
+    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png, completion: @escaping (Error?) -> ()) {
+        
+        let url: URL = FileManager.default.temporaryDirectory
+            .appendingPathExtension("image-asset-\(UUID().uuidString).\(format.filenameExtension)")
+        
+        let data: Data
+        switch format {
+        case .png:
+            guard let pngData = image.pngData() else {
+                completion(AssetError.badImageData)
+                return
+            }
+            data = pngData
+        case .jpg(let compressionQuality):
+            guard let jpgData = image.jpegData(compressionQuality: compressionQuality) else {
+                completion(AssetError.badImageData)
+                return
+            }
+            data = jpgData
+        }
+        
+        do {
+            try data.write(to: url)
+            
+            saveToFiles(url: url) { error in
+                
+                try? FileManager.default.removeItem(at: url)
+                
+                completion(error)
+            }
+        } catch {
+            completion(error)
+        }
+    }
+    
     public func saveToFiles(
         url: URL
     ) async throws {
@@ -258,30 +318,30 @@ extension AMAssetManager {
     
     #if os(iOS)
    
-    public func saveImageToPhotos(
-        _ image: AMImage
-    ) async throws {
-        let _: Void = try await withCheckedThrowingContinuation { continuation in
-            saveImageToPhotos(image) { error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume()
-            }
-        }
-    }
+//    public func saveImageToPhotos(
+//        _ image: AMImage
+//    ) async throws {
+//        let _: Void = try await withCheckedThrowingContinuation { continuation in
+//            saveImageToPhotos(image) { error in
+//                if let error = error {
+//                    continuation.resume(throwing: error)
+//                    return
+//                }
+//                continuation.resume()
+//            }
+//        }
+//    }
     
     public func saveImageToPhotos(
-        _ image: AMImage, completion: @escaping (Error?) -> ()
+        _ image: AMImage/*, completion: @escaping (Error?) -> ()*/
     ) {
-        UIImageWriteToSavedPhotosAlbum(image, self, #selector(saveCompleted), nil)
-        imageSaveCompletionHandler = completion
+        UIImageWriteToSavedPhotosAlbum(image, self, nil/*#selector(saveCompleted)*/, nil)
+//        imageSaveCompletionHandler = completion
     }
       
-    @objc private func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-        imageSaveCompletionHandler?(error)
-    }
+//    @objc func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+//        imageSaveCompletionHandler?(error)
+//    }
     
     public func saveVideoToPhotos(
         url: URL
