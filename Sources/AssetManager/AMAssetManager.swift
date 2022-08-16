@@ -283,7 +283,7 @@ extension AMAssetManager {
         }
         
         #if os(macOS)
-        saveFile(data: data, title: "Save Image", name: "\(name)\(format.filenameExtension)") { error in
+        saveFile(data: data, title: "Save Image", name: "\(name).\(format.filenameExtension)") { error in
 //            completion(error)
         }
         #else
