@@ -258,6 +258,7 @@ extension AMAssetManager {
     
     public func saveImageToFiles(
         _ image: AMImage,
+        name: String,
         as format: ImageAssetFormat = .png
 //        completion: @escaping (Error?) -> ()
     ) {
@@ -281,6 +282,11 @@ extension AMAssetManager {
             data = jpgData
         }
         
+        #if os(macOS)
+        saveFile(data: data, title: "Save Image", name: "\(name)\(format.filenameExtension)") { error in
+//            completion(error)
+        }
+        #else
         do {
             try data.write(to: url)
             
@@ -291,8 +297,10 @@ extension AMAssetManager {
                 completion(error)
             }*/
         } catch {
+            print("Asset Manager - Temporary Image File Save Failed:", error)
 //            completion(error)
         }
+        #endif
     }
     
 //    public func saveToFiles(
@@ -618,3 +626,22 @@ extension AMAssetManager {
         next()
     }
 }
+
+#if os(macOS)
+
+extension NSImage {
+
+    func pngData() -> Data? {
+        guard let representation = tiffRepresentation else { return nil }
+        guard let bitmap = NSBitmapImageRep(data: representation) else { return nil }
+        return bitmap.representation(using: .png, properties: [:])
+    }
+
+    func jpegData(compressionQuality: CGFloat) -> Data? {
+        guard let representation = tiffRepresentation else { return nil }
+        guard let bitmap = NSBitmapImageRep(data: representation) else { return nil }
+        return bitmap.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
+    }
+}
+
+#endif

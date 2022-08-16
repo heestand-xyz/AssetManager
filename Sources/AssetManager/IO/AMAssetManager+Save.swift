@@ -19,10 +19,24 @@ extension AMAssetManager {
             
             let data: Data = try Data(contentsOf: url)
             
+            saveFile(data: data, title: title, name: url.lastPathComponent, completion: completion)
+            
+        } catch {
+            completion?(error)
+        }
+    }
+    
+    func saveFile(data: Data,
+                  title: String? = nil,
+                  name: String,
+                  completion: ((Error?) -> ())? = nil) {
+        
+        do {
+            
             let savePanel = NSSavePanel()
             savePanel.title = title ?? "Save File"
             savePanel.canCreateDirectories = true
-            savePanel.nameFieldStringValue = url.lastPathComponent
+            savePanel.nameFieldStringValue = name
             
             savePanel.begin { response in
                 
