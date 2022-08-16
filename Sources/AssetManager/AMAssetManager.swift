@@ -244,19 +244,23 @@ extension AMAssetManager {
         }
     }
     
-    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
-        let _: Void = try await withCheckedThrowingContinuation { continuation in
-            saveImageToFiles(image, as: format) { error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume()
-            }
-        }
-    }
+//    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
+//        let _: Void = try await withCheckedThrowingContinuation { continuation in
+//            saveImageToFiles(image, as: format) { error in
+//                if let error = error {
+//                    continuation.resume(throwing: error)
+//                    return
+//                }
+//                continuation.resume()
+//            }
+//        }
+//    }
     
-    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png, completion: @escaping (Error?) -> ()) {
+    public func saveImageToFiles(
+        _ image: AMImage,
+        as format: ImageAssetFormat = .png
+//        completion: @escaping (Error?) -> ()
+    ) {
         
         let url: URL = FileManager.default.temporaryDirectory
             .appendingPathExtension("image-asset-\(UUID().uuidString).\(format.filenameExtension)")
@@ -265,13 +269,13 @@ extension AMAssetManager {
         switch format {
         case .png:
             guard let pngData = image.pngData() else {
-                completion(AssetError.badImageData)
+//                completion(AssetError.badImageData)
                 return
             }
             data = pngData
         case .jpg(let compressionQuality):
             guard let jpgData = image.jpegData(compressionQuality: compressionQuality) else {
-                completion(AssetError.badImageData)
+//                completion(AssetError.badImageData)
                 return
             }
             data = jpgData
@@ -280,39 +284,39 @@ extension AMAssetManager {
         do {
             try data.write(to: url)
             
-            saveToFiles(url: url) { error in
+            saveToFiles(url: url)/* { error in
                 
                 try? FileManager.default.removeItem(at: url)
                 
                 completion(error)
-            }
+            }*/
         } catch {
-            completion(error)
+//            completion(error)
         }
     }
     
-    public func saveToFiles(
-        url: URL
-    ) async throws {
-        let _: Void = try await withCheckedThrowingContinuation { continuation in
-            saveToFiles(url: url) { error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume()
-            }
-        }
-    }
+//    public func saveToFiles(
+//        url: URL
+//    ) async throws {
+//        let _: Void = try await withCheckedThrowingContinuation { continuation in
+//            saveToFiles(url: url) { error in
+//                if let error = error {
+//                    continuation.resume(throwing: error)
+//                    return
+//                }
+//                continuation.resume()
+//            }
+//        }
+//    }
     
     public func saveToFiles(
-        url: URL, completion: @escaping (Error?) -> ()
+        url: URL//, completion: @escaping (Error?) -> ()
     ) {
         #if os(iOS)
         fileUrl = url
         showSaveFilePicker = true
         #elseif os(macOS)
-        saveFile(url: url, completion: completion)
+        saveFile(url: url, completion: nil)
         #endif
     }
     
