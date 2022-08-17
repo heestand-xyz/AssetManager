@@ -262,10 +262,7 @@ extension AMAssetManager {
         as format: ImageAssetFormat = .png
 //        completion: @escaping (Error?) -> ()
     ) {
-        
-        let url: URL = FileManager.default.temporaryDirectory
-            .appendingPathExtension("image-asset-\(UUID().uuidString).\(format.filenameExtension)")
-        
+                
         let data: Data
         switch format {
         case .png:
@@ -287,8 +284,20 @@ extension AMAssetManager {
 //            completion(error)
         }
         #else
+        
         do {
+            
+            let folderURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent(UUID().uuidString)
+            
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
+            
+            let url: URL = folderURL
+                .appendingPathComponent("\(name).\(format.filenameExtension)")
+            
+//            _ = url.startAccessingSecurityScopedResource()
             try data.write(to: url)
+//            url.stopAccessingSecurityScopedResource()
             
             saveToFiles(url: url)/* { error in
                 
