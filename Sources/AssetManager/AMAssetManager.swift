@@ -356,7 +356,10 @@ extension AMAssetManager {
     public func saveImageToPhotos(
         _ image: AMImage/*, completion: @escaping (Error?) -> ()*/
     ) {
-        UIImageWriteToSavedPhotosAlbum(image, self, nil/*#selector(saveCompleted)*/, nil)
+        /// Alpha Fix (Image to Data to Image)
+        guard let data: Data = image.pngData() else { return }
+        guard let dataImage: UIImage = UIImage(data: data) else { return }
+        UIImageWriteToSavedPhotosAlbum(dataImage, self, nil/*#selector(saveCompleted)*/, nil)
 //        imageSaveCompletionHandler = completion
     }
       
