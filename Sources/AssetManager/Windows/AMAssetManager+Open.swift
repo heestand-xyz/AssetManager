@@ -91,6 +91,30 @@ extension AMAssetManager {
             completion(.success(assetUrlFile))
         }
     }
+    
+    func openFolder(title: String,
+                    completion: @escaping (Result<URL?, Error>) -> ()) {
+        
+        let openPanel = NSOpenPanel()
+        
+        openPanel.title = title
+        openPanel.allowsMultipleSelection = false
+        openPanel.canChooseDirectories = true
+        openPanel.canCreateDirectories = true
+        openPanel.allowedContentTypes = []
+        
+        openPanel.begin { response in
+            guard response == .OK else {
+                completion(.success(nil))
+                return
+            }
+            guard let url: URL = openPanel.url else {
+                completion(.failure(AssetOpenError.urlNotFound))
+                return
+            }
+            completion(.success(url))
+        }
+    }
 }
 
 #endif

@@ -244,6 +244,24 @@ extension AMAssetManager {
         }
     }
     
+    #if os(macOS)
+    
+    public func importFolder() async throws -> URL? {
+        try await withCheckedThrowingContinuation { continuation in
+            importFolder() { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importFolder(
+        completion: @escaping (Result<URL?, Error>) -> ()
+    ) {
+        openFolder(title: "Select Folder", completion: completion)
+    }
+    
+    #endif
+    
 //    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
 //        let _: Void = try await withCheckedThrowingContinuation { continuation in
 //            saveImageToFiles(image, as: format) { error in
