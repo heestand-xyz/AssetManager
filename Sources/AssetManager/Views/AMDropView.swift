@@ -2,6 +2,8 @@
 //  Created by Anton Heestand on 2022-08-12.
 //
 
+#if os(iOS)
+
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -69,3 +71,5 @@ extension View {
         }
     }
 }
+
+#endif

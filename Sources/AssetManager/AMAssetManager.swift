@@ -539,6 +539,9 @@ extension AMAssetManager {
     }
 }
 
+// TODO: Should work on macOS (Archive Error)
+#if os(iOS)
+
 extension AMAssetManager {
     
     func dropImages(providers: [NSItemProvider], completion: @escaping ([AMImage]) -> ()) {
@@ -656,6 +659,8 @@ extension AMAssetManager {
         next()
     }
 }
+
+#endif
 
 #if os(macOS)
 
