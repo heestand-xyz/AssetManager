@@ -151,6 +151,16 @@ extension AMAssetManager {
         }
     }
     
+    #if os(macOS)
+    
+    public func importImages(
+        completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()
+    ) {
+        openImages(completion: completion)
+    }
+    
+    #endif
+    
     public func importVideo(
         from source: AssetSource
     ) async throws -> AMAssetURLFile? {

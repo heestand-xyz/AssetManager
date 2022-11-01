@@ -54,6 +54,33 @@ extension AMAssetManager {
         }
     }
     
+    func openImages(completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()) {
+        openFiles(title: "Import Images",
+                  allowedFileTypes: AMAssetManager.AssetType.image.types) { result in
+            switch result {
+            case .success(let urlFiles):
+                var imageFiles: [AMAssetImageFile] = []
+                for urlFile in urlFiles {
+                    do {
+                        let data: Data = try Data(contentsOf: urlFile.url)
+                        guard let image = NSImage(data: data) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        let imageFile = AMAssetImageFile(name: urlFile.name, image: image)
+                        imageFiles.append(imageFile)
+                    } catch {
+                        completion(.failure(AssetOpenError.badImageData))
+                        return
+                    }
+                }
+                completion(.success(imageFiles))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
     func openVideo(completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
         openFile(title: "Import Video",
                  allowedFileTypes: AMAssetManager.AssetType.video.types,
@@ -89,6 +116,39 @@ extension AMAssetManager {
             url.stopAccessingSecurityScopedResource()
             let assetUrlFile = AMAssetURLFile(name: name, url: url)
             completion(.success(assetUrlFile))
+        }
+    }
+    
+    func openFiles(title: String,
+                   allowedFileTypes: [UTType]?,
+                   completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
+        
+        let openPanel = NSOpenPanel()
+        
+        openPanel.title = title
+        openPanel.allowsMultipleSelection = true
+        openPanel.canChooseDirectories = false
+        openPanel.canCreateDirectories = true
+        openPanel.allowedContentTypes = allowedFileTypes ?? []
+        
+        openPanel.begin { response in
+            guard response == .OK else {
+                completion(.success([]))
+                return
+            }
+            var files: [AMAssetURLFile] = []
+            for url in openPanel.urls {
+                guard url.startAccessingSecurityScopedResource()
+                else {
+                    completion(.failure(AssetOpenError.noFileAccess))
+                    return
+                }
+                let name: String = url.deletingPathExtension().lastPathComponent
+                url.stopAccessingSecurityScopedResource()
+                let file = AMAssetURLFile(name: name, url: url)
+                files.append(file)
+            }
+            completion(.success(files))
         }
     }
     
