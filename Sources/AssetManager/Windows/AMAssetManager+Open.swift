@@ -53,6 +53,11 @@ extension AMAssetManager {
             }
         }
     }
+
+    func openImages(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
+        openFiles(title: "Import Images",
+                  allowedFileTypes: AMAssetManager.AssetType.image.types, completion: completion)
+    }
     
     func openImages(completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()) {
         openFiles(title: "Import Images",

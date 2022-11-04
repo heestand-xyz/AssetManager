@@ -159,6 +159,12 @@ extension AMAssetManager {
         openImages(completion: completion)
     }
     
+    public func importImages(
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        openImages(completion: completion)
+    }
+    
     #endif
     
     public func importVideo(
@@ -624,6 +630,63 @@ extension AMAssetManager {
                 
             } else {
                 completion(urls)
+                return
+            }
+        }
+        
+        next()
+    }
+    
+    func dropMedia(providers: [NSItemProvider], completion: @escaping ([AMAssetFile]) -> ()) {
+        
+        var providers: [NSItemProvider] = providers
+        var assetFiles: [AMAssetFile] = []
+        
+        func next() {
+            
+            if !providers.isEmpty {
+                
+                let provider = providers.removeFirst()
+                
+                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                    
+                    provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, error in
+                        
+                        guard error == nil,
+                              let data: Data = data,
+                              let image = AMImage(data: data) else {
+                            next()
+                            return
+                        }
+                        
+                        let assetFile = AMAssetImageFile(name: nil, image: image)
+                        
+                        assetFiles.append(assetFile)
+                        
+                        next()
+                    }
+                } else if provider.hasItemConformingToTypeIdentifier(UTType.video.identifier) {
+                    
+                    provider.loadFileRepresentation(forTypeIdentifier: UTType.video.identifier) { url, error in
+                        
+                        guard error == nil,
+                              let url: URL = url else {
+                            next()
+                            return
+                        }
+                        
+                        let assetFile = AMAssetURLFile(name: nil, url: url)
+                        
+                        assetFiles.append(assetFile)
+                        
+                        next()
+                    }
+                } else {
+                    next()
+                }
+                
+            } else {
+                completion(assetFiles)
                 return
             }
         }

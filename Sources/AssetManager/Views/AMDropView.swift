@@ -47,6 +47,25 @@ extension View {
         }
     }
     
+    public func onDropOfMedia(
+        assetManager: AMAssetManager,
+        isTargeted: Binding<Bool>? = nil,
+        completion: @escaping ([AMAssetFile]) -> ()
+    ) -> some View {
+        
+        self.onDrop(
+            of: AMAssetManager.AssetType.image.types + AMAssetManager.AssetType.video.types,
+            isTargeted: isTargeted
+        ) { providers in
+            
+            assetManager.dropMedia(providers: providers) { assetFiles in
+                completion(assetFiles)
+            }
+            
+            return true
+        }
+    }
+    
     @ViewBuilder
     public func onDropOfURLs(
         filenameExtension: String,
