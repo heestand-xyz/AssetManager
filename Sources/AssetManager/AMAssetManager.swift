@@ -262,15 +262,15 @@ extension AMAssetManager {
     
     #if os(macOS)
     
-    public func importFolder() async throws -> URL? {
+    public func selectFolder() async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
-            importFolder() { result in
+            selectFolder() { result in
                 continuation.resume(with: result)
             }
         }
     }
     
-    public func importFolder(
+    public func selectFolder(
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
         openFolder(title: "Select Folder", completion: completion)
