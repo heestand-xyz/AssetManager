@@ -54,7 +54,7 @@ extension AMAssetManager {
         }
     }
 
-    func openImages(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
+    func openImagesAsURLs(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
         openFiles(title: "Import Images",
                   allowedFileTypes: AMAssetManager.AssetType.image.types, completion: completion)
     }
@@ -90,6 +90,36 @@ extension AMAssetManager {
         openFile(title: "Import Video",
                  allowedFileTypes: AMAssetManager.AssetType.video.types,
                  completion: completion)
+    }
+    
+    func openVideos(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
+        openFiles(title: "Import Videos",
+                  allowedFileTypes: AMAssetManager.AssetType.video.types, completion: completion)
+    }
+    
+    func openMedia(completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
+        openFile(title: "Import Media",
+                 allowedFileTypes: AMAssetManager.AssetType.image.types + AMAssetManager.AssetType.video.types, completion: completion)
+    }
+    
+    func openMedia(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
+        openFiles(title: "Import Media",
+                  allowedFileTypes: AMAssetManager.AssetType.image.types + AMAssetManager.AssetType.video.types) { result in
+            switch result {
+            case .success(let urlFiles):
+                let files: [AMAssetFile] = urlFiles.map { urlFile in
+                    if let data: Data = try? Data(contentsOf: urlFile.url),
+                       let image = NSImage(data: data) {
+                        return AMAssetImageFile(name: urlFile.name, image: image)
+                    } else {
+                        return urlFile
+                    }
+                }
+                completion(.success(files))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
     }
     
     func openFile(title: String,

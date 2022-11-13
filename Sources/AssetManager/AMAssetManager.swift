@@ -23,6 +23,7 @@ public final class AMAssetManager: ObservableObject {
     public enum AssetType {
         case image
         case video
+        case media
         case file(extension: String)
         public var types: [UTType] {
             switch self {
@@ -30,6 +31,8 @@ public final class AMAssetManager: ObservableObject {
                 return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .gif, .icns]
             case .video:
                 return [.video, .movie, .mpeg4Movie, .quickTimeMovie, .mpeg2Video]
+            case .media:
+                return AssetType.image.types + AssetType.video.types
             case .file(let filenameExtension):
                 if let type = UTType(filenameExtension: filenameExtension) {
                     return [type]
@@ -44,6 +47,8 @@ public final class AMAssetManager: ObservableObject {
                 return .images
             case .video:
                 return .videos
+            case .media:
+                return .any(of: [.images, .videos])
             case .file:
                 return nil
             }
@@ -55,6 +60,7 @@ public final class AMAssetManager: ObservableObject {
         case badImageData
         case badPhotosObject
         case fileExtensionNotSupported(_ fileExtension: String)
+        case badURLAccess
         var errorDescription: String? {
             switch self {
             case .badImageData:
@@ -63,6 +69,8 @@ public final class AMAssetManager: ObservableObject {
                 return "Asset Manager - Bad Photos Object"
             case .fileExtensionNotSupported(let fileExtension):
                 return "Asset Manager - File Extension Not Supported (\(fileExtension))"
+            case .badURLAccess:
+                return "Asset Manager - Bad URL Access"
             }
         }
     }
@@ -82,16 +90,18 @@ public final class AMAssetManager: ObservableObject {
     
     #if os(iOS)
     
-    @Published var showOpenFilePicker: Bool = false
-    var fileTypes: [UTType]?
-    var fileSelectedCallback: ((URL?) -> ())?
+    @Published var showOpenFilesPicker: Bool = false
+    var filesTypes: [UTType]?
+    var filesHasMultiSelect: Bool?
+    var filesSelectedCallback: (([URL]) -> ())?
     
     @Published var showSaveFilePicker: Bool = false
     var fileUrl: URL?
     
     @Published var showPhotosPicker: Bool = false
     var photosFilter: PHPickerFilter?
-    var photosSelectedCallback: ((Any?) -> ())?
+    var photosHasMultiSelect: Bool?
+    var photosSelectedCallback: (([Any]) -> ())?
     
     @Published var showShare: Bool = false
     var shareItem: Any?
@@ -118,6 +128,23 @@ extension AMAssetManager {
     }
     
     #endif
+    
+    public func importMedia(
+        from source: AssetSource
+    ) async throws -> [AMAssetFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importMedia(from: source) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importMedia(
+        from source: AssetSource,
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        importAssets(.media, from: source, completion: completion)
+    }
     
     public func importImage(
         from source: AssetSource
@@ -159,13 +186,30 @@ extension AMAssetManager {
         openImages(completion: completion)
     }
     
-    public func importImages(
+    public func importImagesAsURLs(
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        openImages(completion: completion)
+        openImagesAsURLs(completion: completion)
     }
     
     #endif
+    
+    public func importImages(
+        from source: AssetSource,
+        completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()
+    ) {
+        importAssets(.image, from: source) { result in
+            switch result {
+            case .success(let assetFiles):
+                let assetImageFiles: [AMAssetImageFile] = assetFiles.compactMap({ file in
+                   file as? AMAssetImageFile
+                })
+                completion(.success(assetImageFiles))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
     
     public func importVideo(
         from source: AssetSource
@@ -198,6 +242,16 @@ extension AMAssetManager {
             }
         }
     }
+    
+    #if os(macOS)
+    
+    public func importVideos(
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        openVideos(completion: completion)
+    }
+    
+    #endif
     
     public func importFile(
         filenameExtension: String
@@ -477,6 +531,15 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .media:
+                    openMedia { result in
+                        switch result {
+                        case .success(let assetURLFile):
+                            completion(.success(assetURLFile))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFile(title: "Open \(fileExtension.uppercased()) File", allowedFileTypes: [fileType]) { result in
@@ -499,12 +562,14 @@ extension AMAssetManager {
                 }
             }
             #elseif os(iOS)
-            fileTypes = type?.types ?? []
-            fileSelectedCallback = { [weak self] url in
-                self?.fileTypes = nil
-                self?.showOpenFilePicker = false
-                self?.fileSelectedCallback = nil
-                guard let url: URL = url else {
+            filesTypes = type?.types ?? []
+            filesHasMultiSelect = false
+            filesSelectedCallback = { [weak self] urls in
+                self?.filesTypes = nil
+                self?.filesHasMultiSelect = nil
+                self?.showOpenFilesPicker = false
+                self?.filesSelectedCallback = nil
+                guard let url: URL = urls.first else {
                     completion(.success(nil))
                     return
                 }
@@ -521,17 +586,19 @@ extension AMAssetManager {
                     completion(.success(AMAssetURLFile(name: name, url: url)))
                 }
             }
-            showOpenFilePicker = true
+            showOpenFilesPicker = true
             #endif
         case .photos:
             #if os(iOS)
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
-            photosSelectedCallback = { [weak self] object in
+            photosHasMultiSelect = false
+            photosSelectedCallback = { [weak self] objects in
                 self?.photosFilter = nil
+                self?.photosHasMultiSelect = nil
                 self?.showPhotosPicker = false
                 self?.photosSelectedCallback = nil
-                guard let object: Any = object else {
+                guard let object: Any = objects.first else {
                     completion(.success(nil))
                     return
                 }
@@ -547,6 +614,136 @@ extension AMAssetManager {
                         return
                     }
                     completion(.success(AMAssetURLFile(name: nil, url: url)))
+                }
+            }
+            showPhotosPicker = true
+            #endif
+        }
+    }
+    
+    private func importAssets(
+        _ type: AssetType?,
+        from source: AssetSource,
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        switch source {
+        case .files:
+            #if os(macOS)
+            if let type = type {
+                switch type {
+                case .image:
+                    openImages { result in
+                        switch result {
+                        case .success(let assetImageFiles):
+                            completion(.success(assetImageFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                case .video:
+                    openVideos { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                case .media:
+                    openMedia { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                case .file(let fileExtension):
+                    guard let fileType = UTType(filenameExtension: fileExtension) else { return }
+                    openFiles(title: "Open \(fileExtension.uppercased()) Files", allowedFileTypes: [fileType]) { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                }
+            } else {
+                openFiles(title: "Open Files", allowedFileTypes: nil) { result in
+                    switch result {
+                    case .success(let assetURLFiles):
+                        completion(.success(assetURLFiles))
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            }
+            #elseif os(iOS)
+            filesTypes = type?.types ?? []
+            filesHasMultiSelect = true
+            filesSelectedCallback = { [weak self] urls in
+                self?.filesTypes = nil
+                self?.filesHasMultiSelect = nil
+                self?.showOpenFilesPicker = false
+                self?.filesSelectedCallback = nil
+                do {
+                    let files: [AMAssetFile] = try urls.map { url in
+                        let name: String = url.deletingPathExtension().lastPathComponent
+                        guard url.startAccessingSecurityScopedResource() else {
+                            throw AssetError.badURLAccess
+                        }
+                        defer { url.stopAccessingSecurityScopedResource() }
+                        if case .image = type {
+                            guard let image: UIImage = UIImage(contentsOfFile: url.path) else {
+                                throw AssetError.badImageData
+                            }
+                            return AMAssetImageFile(name: name, image: image)
+                        } else if case .media = type {
+                            if let image: UIImage = UIImage(contentsOfFile: url.path) {
+                                return AMAssetImageFile(name: name, image: image)
+                            }
+                        }
+                        return AMAssetURLFile(name: name, url: url)
+                    }
+                    completion(.success(files))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+            showOpenFilesPicker = true
+            #endif
+        case .photos:
+            #if os(iOS)
+            guard let filter: PHPickerFilter = type?.filter else { return }
+            photosFilter = filter
+            photosHasMultiSelect = true
+            photosSelectedCallback = { [weak self] objects in
+                self?.photosFilter = nil
+                self?.photosHasMultiSelect = nil
+                self?.showPhotosPicker = false
+                self?.photosSelectedCallback = nil
+                do {
+                    let files: [AMAssetFile] = try objects.map { object in
+                        if case .image = type {
+                            guard let image: UIImage = object as? UIImage else {
+                                throw AssetError.badPhotosObject
+                            }
+                            return AMAssetImageFile(name: nil, image: image)
+                        }
+                        else if case .media = type {
+                            if let image: UIImage = object as? UIImage {
+                                return AMAssetImageFile(image: image)
+                            }
+                        }
+                        guard let url: URL = object as? URL else {
+                            throw AssetError.badPhotosObject
+                        }
+                        return AMAssetURLFile(url: url)
+                    }
+                    completion(.success(files))
+                } catch {
+                    completion(.failure(error))
                 }
             }
             showPhotosPicker = true

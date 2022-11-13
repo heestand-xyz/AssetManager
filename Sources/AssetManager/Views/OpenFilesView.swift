@@ -14,15 +14,14 @@ import UniformTypeIdentifiers
 struct OpenFilesView: UIViewControllerRepresentable {
     
     let types: [UTType]
-    
-    let pickedFiles: (URL) -> ()
-    
+    let multiSelect: Bool
+    let pickedFiles: ([URL]) -> ()
     let cancelled: () -> ()
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: types)
         picker.delegate = context.coordinator
-        picker.allowsMultipleSelection = false
+        picker.allowsMultipleSelection = multiSelect
         context.coordinator.pickedFiles = { url in
             DispatchQueue.main.async {
                 pickedFiles(url)
@@ -44,13 +43,12 @@ struct OpenFilesView: UIViewControllerRepresentable {
     
     class Coordinator: NSObject, UIDocumentPickerDelegate {
         
-        var pickedFiles: ((URL) -> ())?
+        var pickedFiles: (([URL]) -> ())?
         
         var cancelled: (() -> ())?
         
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url: URL = urls.first else { return }
-            pickedFiles?(url)
+            pickedFiles?(urls)
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {

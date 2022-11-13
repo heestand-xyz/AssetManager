@@ -14,15 +14,14 @@ import PhotosUI
 struct PhotosView: UIViewControllerRepresentable {
     
     let filter: PHPickerFilter
-    
-    let pickedContent: (Any?) -> ()
-    
+    let multiSelect: Bool
+    let pickedContent: ([Any]) -> ()
     let cancelled: () -> ()
     
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
         configuration.filter = filter
-        configuration.selectionLimit = 1
+        configuration.selectionLimit = multiSelect ? 0 : 1
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = context.coordinator
         context.coordinator.pickedContent = { url in
@@ -46,38 +45,49 @@ struct PhotosView: UIViewControllerRepresentable {
     
     class Coordinator: PHPickerViewControllerDelegate {
         
-        var pickedContent: ((Any?) -> ())?
+        var pickedContent: (([Any]) -> ())?
         
         var cancelled: (() -> ())?
         
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            guard let result: PHPickerResult = results.first else {
+            if results.isEmpty {
                 cancelled?()
                 return
             }
-            if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
-                result.itemProvider.loadObject(ofClass: UIImage.self, completionHandler: { [weak self] provider, error in
-                    guard error == nil else {
-                        self?.pickedContent?(nil)
-                        return
+            Task {
+                var assets: [Any] = []
+                
+                for result in results {
+                    
+                    if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
+                        
+                        let image: UIImage? = try? await withCheckedThrowingContinuation { continuation in
+                            result.itemProvider.loadObject(ofClass: UIImage.self, completionHandler: { provider, error in
+                                if let error {
+                                    continuation.resume(throwing: error)
+                                    return
+                                }
+                                continuation.resume(returning: provider as? UIImage)
+                            })
+                        }
+                        assets.append(image as Any)
+                        
+                    } else {
+                        
+                        let url: URL? = try? await withCheckedThrowingContinuation { continuation in
+                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier, options: nil) { object, error in
+                                if let error {
+                                    continuation.resume(throwing: error)
+                                    return
+                                }
+                                continuation.resume(returning: object as? URL)
+                            }
+                        }
+                        assets.append(url as Any)
                     }
-                    guard let image: UIImage = provider as? UIImage else {
-                        self?.pickedContent?(nil)
-                        return
-                    }
-                    self?.pickedContent?(image)
-                })
-            } else {
-                result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier, options: nil) { [weak self] object, error in
-                    guard error == nil else {
-                        self?.pickedContent?(nil)
-                        return
-                    }
-                    guard let url: URL = object as? URL else {
-                        self?.pickedContent?(nil)
-                        return
-                    }
-                    self?.pickedContent?(url)
+                }
+                await MainActor.run {
+                    pickedContent?(assets)
                 }
             }
         }

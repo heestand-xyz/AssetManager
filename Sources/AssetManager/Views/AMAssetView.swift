@@ -14,11 +14,12 @@ struct AMAssetView<Content: View>: View {
     
     var body: some View {
         content()
-            .sheet(isPresented: $assetManager.showOpenFilePicker, onDismiss: {}, content: {
-                OpenFilesView(types: assetManager.fileTypes ?? []) { url in
-                    assetManager.fileSelectedCallback?(url)
+            .sheet(isPresented: $assetManager.showOpenFilesPicker, onDismiss: {}, content: {
+                OpenFilesView(types: assetManager.filesTypes ?? [],
+                              multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
+                    assetManager.filesSelectedCallback?(urls)
                 } cancelled: {
-                    assetManager.fileSelectedCallback?(nil)
+                    assetManager.filesSelectedCallback?([])
                 }
             })
             .sheet(isPresented: $assetManager.showSaveFilePicker, onDismiss: {}, content: {
@@ -27,10 +28,11 @@ struct AMAssetView<Content: View>: View {
                 }
             })
             .sheet(isPresented: $assetManager.showPhotosPicker, onDismiss: {}, content: {
-                PhotosView(filter: assetManager.photosFilter ?? .images) { object in
-                    assetManager.photosSelectedCallback?(object)
+                PhotosView(filter: assetManager.photosFilter ?? .images,
+                           multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
+                    assetManager.photosSelectedCallback?(objects)
                 } cancelled: {
-                    assetManager.photosSelectedCallback?(nil)
+                    assetManager.photosSelectedCallback?([])
                 }
             })
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
