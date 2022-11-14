@@ -319,8 +319,10 @@ extension AMAssetManager {
     
     public func selectFolder() async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
-            selectFolder() { result in
-                continuation.resume(with: result)
+            DispatchQueue.main.async { [weak self] in
+                self?.selectFolder() { result in
+                    continuation.resume(with: result)
+                }
             }
         }
     }
