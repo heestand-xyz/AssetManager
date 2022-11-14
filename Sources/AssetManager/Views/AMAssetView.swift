@@ -22,6 +22,13 @@ struct AMAssetView<Content: View>: View {
                     assetManager.filesSelectedCallback?([])
                 }
             })
+            .sheet(isPresented: $assetManager.showOpenFolderPicker, onDismiss: {}, content: {
+                OpenFolderView { url in
+                    assetManager.folderSelectedCallback?(url)
+                } cancelled: {
+                    assetManager.folderSelectedCallback?(nil)
+                }
+            })
             .sheet(isPresented: $assetManager.showSaveFilePicker, onDismiss: {}, content: {
                 if let url: URL = assetManager.fileUrl {
                     SaveFilesView(url: url)

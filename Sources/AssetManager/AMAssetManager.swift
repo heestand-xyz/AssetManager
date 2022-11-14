@@ -95,6 +95,9 @@ public final class AMAssetManager: ObservableObject {
     var filesHasMultiSelect: Bool?
     var filesSelectedCallback: (([URL]) -> ())?
     
+    @Published var showOpenFolderPicker: Bool = false
+    var folderSelectedCallback: ((URL?) -> ())?
+    
     @Published var showSaveFilePicker: Bool = false
     var fileUrl: URL?
     
@@ -314,8 +317,6 @@ extension AMAssetManager {
         }
     }
     
-    #if os(macOS)
-    
     public func selectFolder() async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
             selectFolder() { result in
@@ -327,10 +328,17 @@ extension AMAssetManager {
     public func selectFolder(
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
+        #if os(macOS)
         openFolder(title: "Select Folder", completion: completion)
+        #else
+        folderSelectedCallback = { [weak self] url in
+            self?.folderSelectedCallback = nil
+            self?.showOpenFolderPicker = false
+            completion(.success(url))
+        }
+        showOpenFolderPicker = true
+        #endif
     }
-    
-    #endif
     
 //    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
 //        let _: Void = try await withCheckedThrowingContinuation { continuation in
