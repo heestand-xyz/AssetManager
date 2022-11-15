@@ -861,11 +861,10 @@ extension AMAssetManager {
                 
                 if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                     
-                    provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, error in
+                    provider.loadObject(ofClass: UIImage.self) { object, error in
                         
                         guard error == nil,
-                              let data: Data = data,
-                              let image = AMImage(data: data) else {
+                              let image = object as? UIImage else {
                             next()
                             return
                         }
@@ -876,12 +875,12 @@ extension AMAssetManager {
                         
                         next()
                     }
-                } else if provider.hasItemConformingToTypeIdentifier(UTType.video.identifier) {
+                } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                     
-                    provider.loadFileRepresentation(forTypeIdentifier: UTType.video.identifier) { url, error in
+                    provider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
                         
                         guard error == nil,
-                              let url: URL = url else {
+                              let url: URL = object as? URL else {
                             next()
                             return
                         }
