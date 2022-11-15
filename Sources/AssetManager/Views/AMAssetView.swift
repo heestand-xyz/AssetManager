@@ -35,11 +35,13 @@ struct AMAssetView<Content: View>: View {
                 }
             })
             .sheet(isPresented: $assetManager.showPhotosPicker, onDismiss: {}, content: {
-                PhotosView(filter: assetManager.photosFilter ?? .images,
-                           multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
-                    assetManager.photosSelectedCallback?(objects)
-                } cancelled: {
-                    assetManager.photosSelectedCallback?([])
+                if #available(iOS 16.0, *) {
+                    PhotosView(filter: assetManager.photosFilter ?? .images,
+                               multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
+                        assetManager.photosSelectedCallback?(objects)
+                    } cancelled: {
+                        assetManager.photosSelectedCallback?([])
+                    }
                 }
             })
             .sheet(isPresented: $assetManager.showShare, onDismiss: {

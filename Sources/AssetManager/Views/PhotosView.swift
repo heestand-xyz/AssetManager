@@ -11,6 +11,7 @@ import UIKit
 import SwiftUI
 import PhotosUI
 
+@available(iOS 16.0, *)
 struct PhotosView: UIViewControllerRepresentable {
     
     let filter: PHPickerFilter
@@ -61,7 +62,7 @@ struct PhotosView: UIViewControllerRepresentable {
                     
                     if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
                         
-                        let image: UIImage? = try? await withCheckedThrowingContinuation { continuation in
+                        if let image: UIImage = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadObject(ofClass: UIImage.self, completionHandler: { provider, error in
                                 if let error {
                                     continuation.resume(throwing: error)
@@ -69,21 +70,26 @@ struct PhotosView: UIViewControllerRepresentable {
                                 }
                                 continuation.resume(returning: provider as? UIImage)
                             })
+                        }) {
+                            assets.append(image as Any)
                         }
-                        assets.append(image as Any)
                         
                     } else {
                         
-                        let url: URL? = try? await withCheckedThrowingContinuation { continuation in
-                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier, options: nil) { object, error in
+                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
+                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
                                 if let error {
                                     continuation.resume(throwing: error)
                                     return
                                 }
+                                if (object as? URL)?.startAccessingSecurityScopedResource() == false {
+                                    assertionFailure()
+                                }
                                 continuation.resume(returning: object as? URL)
                             }
+                        }) {
+                            assets.append(url as Any)
                         }
-                        assets.append(url as Any)
                     }
                 }
                 await MainActor.run {

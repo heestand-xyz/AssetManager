@@ -618,13 +618,18 @@ extension AMAssetManager {
                         return
                     }
                     completion(.success(AMAssetImageFile(name: nil, image: image)))
-                } else {
-                    guard let url: URL = object as? URL else {
-                        completion(.failure(AssetError.badPhotosObject))
+                    return
+                } else if case .media = type {
+                    if let image: UIImage = object as? UIImage {
+                        completion(.success(AMAssetImageFile(name: nil, image: image)))
                         return
                     }
-                    completion(.success(AMAssetURLFile(name: nil, url: url)))
                 }
+                guard let url: URL = object as? URL else {
+                    completion(.failure(AssetError.badPhotosObject))
+                    return
+                }
+                completion(.success(AMAssetURLFile(name: nil, url: url)))
             }
             showPhotosPicker = true
             #endif
@@ -740,8 +745,7 @@ extension AMAssetManager {
                                 throw AssetError.badPhotosObject
                             }
                             return AMAssetImageFile(name: nil, image: image)
-                        }
-                        else if case .media = type {
+                        } else if case .media = type {
                             if let image: UIImage = object as? UIImage {
                                 return AMAssetImageFile(image: image)
                             }
@@ -750,7 +754,7 @@ extension AMAssetManager {
                             throw AssetError.badPhotosObject
                         }
                         return AMAssetURLFile(url: url)
-                    }
+                     }
                     completion(.success(files))
                 } catch {
                     completion(.failure(error))
