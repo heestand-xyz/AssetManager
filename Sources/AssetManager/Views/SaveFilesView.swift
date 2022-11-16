@@ -14,9 +14,10 @@ import UniformTypeIdentifiers
 struct SaveFilesView: UIViewControllerRepresentable {
     
     let url: URL
+    let asCopy: Bool
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forExporting: [url])
+        let picker = UIDocumentPickerViewController(forExporting: [url], asCopy: asCopy)
         picker.allowsMultipleSelection = false
         return picker
     }

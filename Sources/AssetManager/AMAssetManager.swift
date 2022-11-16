@@ -99,6 +99,7 @@ public final class AMAssetManager: ObservableObject {
     var folderSelectedCallback: ((URL?) -> ())?
     
     @Published var showSaveFilePicker: Bool = false
+    var saveFileAsCopy: Bool = true
     var fileUrl: URL?
     
     @Published var showPhotosPicker: Bool = false
@@ -425,11 +426,13 @@ extension AMAssetManager {
 //    }
     
     public func saveToFiles(
-        url: URL//, completion: @escaping (Error?) -> ()
+        url: URL,
+        asCopy: Bool = true
     ) {
         #if os(iOS)
         fileUrl = url
         showSaveFilePicker = true
+        saveFileAsCopy = asCopy
         #elseif os(macOS)
         saveFile(url: url, completion: nil)
         #endif
