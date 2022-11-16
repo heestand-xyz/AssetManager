@@ -482,6 +482,8 @@ extension AMAssetManager {
     public func saveVideoToPhotos(
         url: URL, completion: @escaping (Error?) -> ()
     ) {
+//        UIVideoAtPathIsCompatibleWithSavedPhotosAlbum
+//        UISaveVideoAtPathToSavedPhotosAlbum
         requestAuthorization {
             PHPhotoLibrary.shared().performChanges({
                 let request = PHAssetCreationRequest.forAsset()
