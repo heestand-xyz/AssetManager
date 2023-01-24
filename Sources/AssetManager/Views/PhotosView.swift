@@ -77,16 +77,44 @@ struct PhotosView: UIViewControllerRepresentable {
                     } else {
                         
                         if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
-                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
+                            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
                                 if let error {
                                     continuation.resume(throwing: error)
                                     return
                                 }
-                                if (object as? URL)?.startAccessingSecurityScopedResource() == false {
-                                    assertionFailure()
+                                guard let url: URL else {
+                                    continuation.resume(returning: nil)
+                                    return
                                 }
-                                continuation.resume(returning: object as? URL)
+                                do {
+                                    let _ = url.startAccessingSecurityScopedResource()
+                                    
+                                    let folderURL: URL = FileManager.default.temporaryDirectory
+                                        .appending(component: "import-video")
+                                        .appending(component: "\(UUID())")
+                                    if !FileManager.default.fileExists(atPath: folderURL.path) {
+                                        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+                                    }
+                                    
+                                    let newURL: URL = folderURL.appending(path: url.lastPathComponent)
+                                    
+                                    let data = try Data(contentsOf: url)
+                                    try data.write(to: newURL)
+                                    
+                                    url.stopAccessingSecurityScopedResource()
+                                    
+                                    continuation.resume(returning: newURL)
+                                } catch {
+                                    continuation.resume(throwing: error)
+                                }
                             }
+//                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
+//                                if let error {
+//                                    continuation.resume(throwing: error)
+//                                    return
+//                                }
+//                                continuation.resume(returning: object as? URL)
+//                            }
                         }) {
                             assets.append(url as Any)
                         }
