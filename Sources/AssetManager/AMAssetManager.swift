@@ -771,8 +771,8 @@ extension AMAssetManager {
     }
 }
 
-// TODO: Should work on macOS (Archive Error)
-#if os(iOS)
+// FIXME: Archive Error on macOS
+//#if os(iOS)
 
 extension AMAssetManager {
     
@@ -866,10 +866,10 @@ extension AMAssetManager {
                 
                 if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                     
-                    provider.loadObject(ofClass: UIImage.self) { object, error in
+                    provider.loadObject(ofClass: AMImage.self) { object, error in
                         
                         guard error == nil,
-                              let image = object as? UIImage else {
+                              let image = object as? AMImage else {
                             next()
                             return
                         }
@@ -948,7 +948,7 @@ extension AMAssetManager {
     }
 }
 
-#endif
+//#endif
 
 #if os(macOS)
 
