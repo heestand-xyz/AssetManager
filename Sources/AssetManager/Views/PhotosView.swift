@@ -37,6 +37,7 @@ struct PhotosView: ViewRepresentable {
                 cancelled()
             }
         }
+        context.coordinator.picker = picker
         return picker.view
     }
     
@@ -47,6 +48,8 @@ struct PhotosView: ViewRepresentable {
     }
     
     class Coordinator: PHPickerViewControllerDelegate {
+        
+        var picker: PHPickerViewController!
         
         var pickedContent: (([Any]) -> ())?
         
