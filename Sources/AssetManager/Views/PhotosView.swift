@@ -21,7 +21,7 @@ struct PhotosView: ViewRepresentable {
     let pickedContent: ([Any]) -> ()
     let cancelled: () -> ()
     
-    func makeView(context: Context) -> NSView {
+    func makeView(context: Context) -> MPView {
         var configuration = PHPickerConfiguration()
         configuration.filter = filter
         configuration.selectionLimit = multiSelect ? 0 : 1
@@ -41,7 +41,7 @@ struct PhotosView: ViewRepresentable {
         return picker.view
     }
     
-    func updateView(_ view: NSView, context: Context) {}
+    func updateView(_ view: MPView, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator()
