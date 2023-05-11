@@ -2,8 +2,6 @@
 //  Created by Anton Heestand on 2022-08-11.
 //
 
-#if os(iOS)
-
 import SwiftUI
 
 struct AMAssetView<Content: View>: View {
@@ -14,6 +12,7 @@ struct AMAssetView<Content: View>: View {
     
     var body: some View {
         content()
+#if os(iOS)
             .sheet(isPresented: $assetManager.showOpenFilesPicker, onDismiss: {}, content: {
                 OpenFilesView(types: assetManager.filesTypes ?? [],
                               multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
@@ -34,16 +33,16 @@ struct AMAssetView<Content: View>: View {
                     SaveFilesView(url: url, asCopy: assetManager.saveFileAsCopy)
                 }
             })
+#endif
             .sheet(isPresented: $assetManager.showPhotosPicker, onDismiss: {}, content: {
-                if #available(iOS 16.0, *) {
-                    PhotosView(filter: assetManager.photosFilter ?? .images,
-                               multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
-                        assetManager.photosSelectedCallback?(objects)
-                    } cancelled: {
-                        assetManager.photosSelectedCallback?([])
-                    }
+                PhotosView(filter: assetManager.photosFilter ?? .images,
+                           multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
+                    assetManager.photosSelectedCallback?(objects)
+                } cancelled: {
+                    assetManager.photosSelectedCallback?([])
                 }
             })
+#if os(iOS)
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
                 assetManager.shareItem = nil
             }) {
@@ -51,6 +50,7 @@ struct AMAssetView<Content: View>: View {
                     ShareView(item: item)
                 }
             }
+#endif
     }
 }
 
@@ -62,5 +62,3 @@ extension View {
         }
     }
 }
-
-#endif

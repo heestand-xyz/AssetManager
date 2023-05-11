@@ -40,7 +40,6 @@ public final class AMAssetManager: ObservableObject {
                 return []
             }
         }
-        #if os(iOS)
         public var filter: PHPickerFilter? {
             switch self {
             case .image:
@@ -53,7 +52,6 @@ public final class AMAssetManager: ObservableObject {
                 return nil
             }
         }
-        #endif
     }
     
     enum AssetError: LocalizedError {
@@ -102,17 +100,17 @@ public final class AMAssetManager: ObservableObject {
     var saveFileAsCopy: Bool = true
     var fileUrl: URL?
     
-    @Published var showPhotosPicker: Bool = false
-    var photosFilter: PHPickerFilter?
-    var photosHasMultiSelect: Bool?
-    var photosSelectedCallback: (([Any]) -> ())?
-    
     @Published var showShare: Bool = false
     var shareItem: Any?
     
 //    private var imageSaveCompletionHandler: ((Error?) -> ())?
     
     #endif
+    
+    @Published var showPhotosPicker: Bool = false
+    var photosFilter: PHPickerFilter?
+    var photosHasMultiSelect: Bool?
+    var photosSelectedCallback: (([Any]) -> ())?
     
     public init() {}
 }
@@ -604,7 +602,6 @@ extension AMAssetManager {
             showOpenFilesPicker = true
             #endif
         case .photos:
-            #if os(iOS)
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
             photosHasMultiSelect = false
@@ -618,14 +615,14 @@ extension AMAssetManager {
                     return
                 }
                 if case .image = type {
-                    guard let image: UIImage = object as? UIImage else {
+                    guard let image: AMImage = object as? AMImage else {
                         completion(.failure(AssetError.badPhotosObject))
                         return
                     }
                     completion(.success(AMAssetImageFile(name: nil, image: image)))
                     return
                 } else if case .media = type {
-                    if let image: UIImage = object as? UIImage {
+                    if let image: AMImage = object as? AMImage {
                         completion(.success(AMAssetImageFile(name: nil, image: image)))
                         return
                     }
@@ -637,7 +634,6 @@ extension AMAssetManager {
                 completion(.success(AMAssetURLFile(name: nil, url: url)))
             }
             showPhotosPicker = true
-            #endif
         }
     }
     
@@ -734,7 +730,6 @@ extension AMAssetManager {
             showOpenFilesPicker = true
             #endif
         case .photos:
-            #if os(iOS)
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
             photosHasMultiSelect = true
@@ -746,12 +741,12 @@ extension AMAssetManager {
                 do {
                     let files: [AMAssetFile] = try objects.map { object in
                         if case .image = type {
-                            guard let image: UIImage = object as? UIImage else {
+                            guard let image: AMImage = object as? AMImage else {
                                 throw AssetError.badPhotosObject
                             }
                             return AMAssetImageFile(name: nil, image: image)
                         } else if case .media = type {
-                            if let image: UIImage = object as? UIImage {
+                            if let image: AMImage = object as? AMImage {
                                 return AMAssetImageFile(image: image)
                             }
                         }
@@ -766,7 +761,6 @@ extension AMAssetManager {
                 }
             }
             showPhotosPicker = true
-            #endif
         }
     }
 }

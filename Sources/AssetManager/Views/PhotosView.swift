@@ -6,20 +6,22 @@
 //
 
 #if os(iOS)
-
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 import SwiftUI
 import PhotosUI
+import MultiViews
 
-@available(iOS 16.0, *)
-struct PhotosView: UIViewControllerRepresentable {
+struct PhotosView: ViewRepresentable {
     
     let filter: PHPickerFilter
     let multiSelect: Bool
     let pickedContent: ([Any]) -> ()
     let cancelled: () -> ()
     
-    func makeUIViewController(context: Context) -> PHPickerViewController {
+    func makeView(context: Context) -> MPView {
         var configuration = PHPickerConfiguration()
         configuration.filter = filter
         configuration.selectionLimit = multiSelect ? 0 : 1
@@ -35,16 +37,19 @@ struct PhotosView: UIViewControllerRepresentable {
                 cancelled()
             }
         }
-        return picker
+        context.coordinator.picker = picker
+        return picker.view
     }
     
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+    func updateView(_ view: MPView, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
     
     class Coordinator: PHPickerViewControllerDelegate {
+        
+        var picker: PHPickerViewController!
         
         var pickedContent: (([Any]) -> ())?
         
@@ -60,15 +65,15 @@ struct PhotosView: UIViewControllerRepresentable {
                 
                 for result in results {
                     
-                    if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
+                    if result.itemProvider.canLoadObject(ofClass: AMImage.self) {
                         
-                        if let image: UIImage = try? await withCheckedThrowingContinuation({ continuation in
-                            result.itemProvider.loadObject(ofClass: UIImage.self, completionHandler: { provider, error in
+                        if let image: AMImage = try? await withCheckedThrowingContinuation({ continuation in
+                            result.itemProvider.loadObject(ofClass: AMImage.self, completionHandler: { provider, error in
                                 if let error {
                                     continuation.resume(throwing: error)
                                     return
                                 }
-                                continuation.resume(returning: provider as? UIImage)
+                                continuation.resume(returning: provider as? AMImage)
                             })
                         }) {
                             assets.append(image as Any)
@@ -108,13 +113,6 @@ struct PhotosView: UIViewControllerRepresentable {
                                     continuation.resume(throwing: error)
                                 }
                             }
-//                            result.itemProvider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
-//                                if let error {
-//                                    continuation.resume(throwing: error)
-//                                    return
-//                                }
-//                                continuation.resume(returning: object as? URL)
-//                            }
                         }) {
                             assets.append(url as Any)
                         }
@@ -127,5 +125,3 @@ struct PhotosView: UIViewControllerRepresentable {
         }
     }
 }
-
-#endif
