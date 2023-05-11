@@ -4,11 +4,12 @@ import SwiftUI
 
 struct CameraView: UIViewControllerRepresentable {
 
-    @Environment(\.presentationMode) var presentationMode
+    @Binding var isShowing: Bool
 
     let mode: UIImagePickerController.CameraCaptureMode
     
-    let picked: (UIImage) -> ()
+    let pickedImage: (UIImage) -> ()
+    let pickedVideo: (URL) -> ()
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
@@ -21,29 +22,50 @@ struct CameraView: UIViewControllerRepresentable {
     func updateUIViewController(_ picker: UIImagePickerController, context: Context) { }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator { image in
-            if let image {
-                picked(image)
-            }
-            presentationMode.wrappedValue.dismiss()
+        Coordinator(mode: mode) { image in
+            pickedImage(image)
+            isShowing = false
+        } pickedVideo: { url in
+            pickedVideo(url)
+            isShowing = false
+        } cancelled: {
+            isShowing = false
         }
     }
     
     class Coordinator: NSObject, UIImagePickerControllerDelegate & UINavigationControllerDelegate {
         
-        let picked: (UIImage?) -> ()
+        let mode: UIImagePickerController.CameraCaptureMode
+        let pickedImage: (UIImage) -> ()
+        let pickedVideo: (URL) -> ()
+        let cancelled: () -> ()
         
-        init(picked: @escaping (UIImage?) -> Void) {
-            self.picked = picked
+        init(mode: UIImagePickerController.CameraCaptureMode,
+             pickedImage: @escaping (UIImage) -> Void,
+             pickedVideo: @escaping (URL) -> Void,
+             cancelled: @escaping () -> Void) {
+            self.mode = mode
+            self.pickedImage = pickedImage
+            self.pickedVideo = pickedVideo
+            self.cancelled = cancelled
         }
         
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            guard let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage else {
-                picked(nil)
-                return
+            switch mode {
+            case .photo:
+                guard let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage else {
+                    picked(nil)
+                    return
+                }
+                picked(image)
+            case .video:
+                guard let url = info[UIImagePickerController.InfoKey.mediaURL] as? URL else {
+                    picked(nil)
+                    return
+                }
+                picked(url)
             }
-            picked(image)
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
