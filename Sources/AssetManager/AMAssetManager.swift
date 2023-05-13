@@ -18,6 +18,7 @@ public final class AMAssetManager: ObservableObject {
     public enum AssetSource {
         case photos
         case files
+        case camera
     }
     
     public enum AssetType {
@@ -107,6 +108,7 @@ public final class AMAssetManager: ObservableObject {
     var cameraMode: UIImagePickerController.CameraCaptureMode?
     var cameraImageCallback: ((UIImage) -> ())?
     var cameraVideoCallback: ((URL) -> ())?
+    var cameraCancelCallback: (() -> ())?
     
     #endif
     
@@ -637,6 +639,24 @@ extension AMAssetManager {
                 completion(.success(AMAssetURLFile(name: nil, url: url)))
             }
             showPhotosPicker = true
+        case .camera:
+            if let type {
+                if case .video = type {
+                    cameraMode = .video
+                    cameraVideoCallback = { url in
+                        completion(.success(AMAssetURLFile(url: url)))
+                    }
+                } else {
+                    cameraMode = .photo
+                    cameraImageCallback = { image in
+                        completion(.success(AMAssetImageFile(name: nil, image: image)))
+                    }
+                }
+                cameraCancelCallback = {
+                    completion(.success(nil))
+                }
+                showCameraPicker = true
+            }
         }
     }
     
@@ -764,6 +784,8 @@ extension AMAssetManager {
                 }
             }
             showPhotosPicker = true
+        case .camera:
+            break
         }
     }
 }

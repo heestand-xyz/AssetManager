@@ -42,6 +42,8 @@ struct AMAssetView<Content: View>: View {
                     },
                                pickedVideo: { url in
                         assetManager.cameraVideoCallback?(url)
+                    }, cancelled: {
+                        assetManager.cameraCancelCallback?()
                     })
                 }
             }

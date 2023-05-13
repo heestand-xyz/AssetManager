@@ -1,4 +1,5 @@
 import SwiftUI
+import MobileCoreServices
 
 #if os(iOS)
 
@@ -10,10 +11,14 @@ struct CameraView: UIViewControllerRepresentable {
     
     let pickedImage: (UIImage) -> ()
     let pickedVideo: (URL) -> ()
+    let cancelled: () -> ()
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
+        if mode == .video {
+            picker.mediaTypes = [kUTTypeMovie as String]
+        }
         picker.cameraCaptureMode = mode
         picker.delegate = context.coordinator
         return picker
@@ -29,6 +34,7 @@ struct CameraView: UIViewControllerRepresentable {
             pickedVideo(url)
             isShowing = false
         } cancelled: {
+            cancelled()
             isShowing = false
         }
     }
@@ -65,6 +71,8 @@ struct CameraView: UIViewControllerRepresentable {
                     return
                 }
                 pickedVideo(url)
+            @unknown default:
+                break
             }
         }
         
