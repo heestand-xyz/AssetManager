@@ -1,7 +1,7 @@
+#if os(iOS)
+
 import SwiftUI
 import MobileCoreServices
-
-#if os(iOS)
 
 struct CameraView: UIViewControllerRepresentable {
 
