@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "coregraphicsextensions",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/heestand-xyz/CoreGraphicsExtensions",
+      "state" : {
+        "revision" : "34c356d232ba6c5b18700ce3e49846f7f6d6edc9",
+        "version" : "1.3.5"
+      }
+    },
+    {
+      "identity" : "multiviews",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/heestand-xyz/MultiViews",
+      "state" : {
+        "revision" : "e0eb527441a1389d17909e67147c2e84e8183741",
+        "version" : "2.0.0"
+      }
+    }
+  ],
+  "version" : 2
+}
