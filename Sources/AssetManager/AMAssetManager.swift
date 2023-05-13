@@ -640,6 +640,7 @@ extension AMAssetManager {
             }
             showPhotosPicker = true
         case .camera:
+            #if os(iOS)
             if let type {
                 if case .video = type {
                     cameraMode = .video
@@ -657,6 +658,7 @@ extension AMAssetManager {
                 }
                 showCameraPicker = true
             }
+            #endif
         }
     }
     
