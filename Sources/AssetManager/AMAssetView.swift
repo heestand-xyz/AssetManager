@@ -13,7 +13,7 @@ struct AMAssetView<Content: View>: View {
     var body: some View {
         content()
 #if os(iOS)
-            .sheet(isPresented: $assetManager.showOpenFilesPicker, onDismiss: {}, content: {
+            .sheet(isPresented: $assetManager.showOpenFilesPicker, content: {
                 OpenFilesView(types: assetManager.filesTypes ?? [],
                               multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
                     assetManager.filesSelectedCallback?(urls)
@@ -21,20 +21,28 @@ struct AMAssetView<Content: View>: View {
                     assetManager.filesSelectedCallback?([])
                 }
             })
-            .sheet(isPresented: $assetManager.showOpenFolderPicker, onDismiss: {}, content: {
+            .sheet(isPresented: $assetManager.showOpenFolderPicker, content: {
                 OpenFolderView { url in
                     assetManager.folderSelectedCallback?(url)
                 } cancelled: {
                     assetManager.folderSelectedCallback?(nil)
                 }
             })
-            .sheet(isPresented: $assetManager.showSaveFilePicker, onDismiss: {}, content: {
+            .sheet(isPresented: $assetManager.showSaveFilePicker, content: {
                 if let url: URL = assetManager.fileUrl {
                     SaveFilesView(url: url, asCopy: assetManager.saveFileAsCopy)
                 }
             })
+            .fullScreenCover(isPresented: $assetManager.showCameraPicker) {
+                if let mode = assetManager.cameraMode {
+                    CameraView(isShowing: $assetManager.showCameraPicker,
+                               mode: mode,
+                               pickedImage: assetManager.cameraImageCallback,
+                               pickedVideo: assetManager.cameraVideoCallback)
+                }
+            }
 #endif
-            .sheet(isPresented: $assetManager.showPhotosPicker, onDismiss: {}, content: {
+            .sheet(isPresented: $assetManager.showPhotosPicker, content: {
                 PhotosView(filter: assetManager.photosFilter ?? .images,
                            multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
                     assetManager.photosSelectedCallback?(objects)

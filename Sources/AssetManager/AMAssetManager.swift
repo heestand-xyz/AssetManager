@@ -103,7 +103,10 @@ public final class AMAssetManager: ObservableObject {
     @Published var showShare: Bool = false
     var shareItem: Any?
     
-//    private var imageSaveCompletionHandler: ((Error?) -> ())?
+    @Published var showCameraPicker: Bool = false
+    var cameraMode: UIImagePickerController.CameraCaptureMode?
+    var cameraImageCallback: ((UIImage) -> ())?
+    var cameraVideoCallback: ((URL) -> ())?
     
     #endif
     
