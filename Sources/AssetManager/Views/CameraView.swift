@@ -55,21 +55,21 @@ struct CameraView: UIViewControllerRepresentable {
             switch mode {
             case .photo:
                 guard let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage else {
-                    picked(nil)
+                    cancelled()
                     return
                 }
-                picked(image)
+                pickedImage(image)
             case .video:
                 guard let url = info[UIImagePickerController.InfoKey.mediaURL] as? URL else {
-                    picked(nil)
+                    cancelled()
                     return
                 }
-                picked(url)
+                pickedVideo(url)
             }
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picked(nil)
+            cancelled()
         }
     }
 }

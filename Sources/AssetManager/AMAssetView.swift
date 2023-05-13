@@ -37,8 +37,12 @@ struct AMAssetView<Content: View>: View {
                 if let mode = assetManager.cameraMode {
                     CameraView(isShowing: $assetManager.showCameraPicker,
                                mode: mode,
-                               pickedImage: assetManager.cameraImageCallback,
-                               pickedVideo: assetManager.cameraVideoCallback)
+                               pickedImage: { image in
+                        assetManager.cameraImageCallback?(image)
+                    },
+                               pickedVideo: { url in
+                        assetManager.cameraVideoCallback?(url)
+                    })
                 }
             }
 #endif
