@@ -136,17 +136,34 @@ extension AMAssetManager {
     
     #endif
     
-    public func importMedia(
+    public func importOneMedia(
         from source: AssetSource
-    ) async throws -> [AMAssetFile] {
+    ) async throws -> AMAssetFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importMedia(from: source) { result in
+            importOneMedia(from: source) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
-    public func importMedia(
+    public func importMultipleMedia(
+        from source: AssetSource
+    ) async throws -> [AMAssetFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importMultipleMedia(from: source) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importOneMedia(
+        from source: AssetSource,
+        completion: @escaping (Result<AMAssetFile?, Error>) -> ()
+    ) {
+        importAsset(.media, from: source, completion: completion)
+    }
+    
+    public func importMultipleMedia(
         from source: AssetSource,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
