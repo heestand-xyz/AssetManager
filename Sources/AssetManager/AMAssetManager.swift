@@ -24,6 +24,7 @@ public final class AMAssetManager: ObservableObject {
     public enum AssetType {
         case image
         case video
+        case lut
         case media
         case file(extension: String)
         public var types: [UTType] {
@@ -32,8 +33,14 @@ public final class AMAssetManager: ObservableObject {
                 return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .gif, .icns]
             case .video:
                 return [.video, .movie, .mpeg4Movie, .quickTimeMovie, .mpeg2Video]
+            case .lut:
+                var types: [UTType] = []
+                if let cube = UTType(filenameExtension: "cube") {
+                    types.append(cube)
+                }
+                return types
             case .media:
-                return AssetType.image.types + AssetType.video.types
+                return AssetType.image.types + AssetType.video.types + AssetType.lut.types
             case .file(let filenameExtension):
                 if let type = UTType(filenameExtension: filenameExtension) {
                     return [type]
@@ -49,7 +56,7 @@ public final class AMAssetManager: ObservableObject {
                 return .videos
             case .media:
                 return .any(of: [.images, .videos])
-            case .file:
+            case .file, .lut:
                 return nil
             }
         }
@@ -585,6 +592,8 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .lut:
+                    break
                 }
             } else {
                 openFile(title: "Open File", allowedFileTypes: nil) { result in
@@ -726,6 +735,8 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .lut:
+                    break
                 }
             } else {
                 openFiles(title: "Open Files", allowedFileTypes: nil) { result in
@@ -935,7 +946,32 @@ extension AMAssetManager {
                         next()
                     }
                 } else {
-                    next()
+                    var foundLUT: Bool = false
+                    for lutType in AMAssetManager.AssetType.lut.types {
+                        if provider.hasItemConformingToTypeIdentifier(lutType.identifier) {
+                            
+                            provider.loadItem(forTypeIdentifier: lutType.identifier) { object, error in
+                                
+                                guard error == nil,
+                                      let url: URL = object as? URL else {
+                                    next()
+                                    return
+                                }
+                                
+                                let assetFile = AMAssetURLFile(name: nil, url: url)
+                                
+                                assetFiles.append(assetFile)
+                                
+                                next()
+                            }
+                            
+                            foundLUT = true
+                            break
+                        }
+                    }
+                    if !foundLUT {
+                        next()
+                    }
                 }
                 
             } else {
