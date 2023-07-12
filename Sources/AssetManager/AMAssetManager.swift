@@ -923,6 +923,8 @@ extension AMAssetManager {
                             return
                         }
                         
+                        // TODO: Get Image Name
+                        
                         let assetFile = AMAssetImageFile(name: nil, image: image)
                         
                         assetFiles.append(assetFile)
@@ -939,7 +941,9 @@ extension AMAssetManager {
                             return
                         }
                         
-                        let assetFile = AMAssetURLFile(name: nil, url: url)
+                        let name: String = url.deletingPathExtension().lastPathComponent
+                        
+                        let assetFile = AMAssetURLFile(name: name, url: url)
                         
                         assetFiles.append(assetFile)
                         
@@ -958,7 +962,9 @@ extension AMAssetManager {
                                     return
                                 }
                                 
-                                let assetFile = AMAssetURLFile(name: nil, url: url)
+                                let name: String = url.deletingPathExtension().lastPathComponent
+                                
+                                let assetFile = AMAssetURLFile(name: name, url: url)
                                 
                                 assetFiles.append(assetFile)
                                 
