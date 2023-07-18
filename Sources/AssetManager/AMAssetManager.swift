@@ -13,7 +13,7 @@ import UIKit
 import UniformTypeIdentifiers
 import PhotosUI
 
-public final class AMAssetManager: ObservableObject {
+public final class AMAssetManager: NSObject, ObservableObject {
     
     public enum AssetSource {
         case photos
@@ -67,6 +67,7 @@ public final class AMAssetManager: ObservableObject {
         case badPhotosObject
         case fileExtensionNotSupported(_ fileExtension: String)
         case badURLAccess
+        case videoNotCompatibleWithPhotosLibrary
         var errorDescription: String? {
             switch self {
             case .badImageData:
@@ -77,6 +78,8 @@ public final class AMAssetManager: ObservableObject {
                 return "Asset Manager - File Extension Not Supported (\(fileExtension))"
             case .badURLAccess:
                 return "Asset Manager - Bad URL Access"
+            case .videoNotCompatibleWithPhotosLibrary:
+                return "Asset Manager - Video Not Compatible with Photos Library"
             }
         }
     }
@@ -117,14 +120,15 @@ public final class AMAssetManager: ObservableObject {
     var cameraVideoCallback: ((URL) -> ())?
     var cameraCancelCallback: (() -> ())?
     
+    private var imageSaveCompletionHandler: ((Error?) -> ())?
+    private var videoSaveCompletionHandler: ((Error?) -> ())?
+    
     #endif
     
     @Published var showPhotosPicker: Bool = false
     var photosFilter: PHPickerFilter?
     var photosHasMultiSelect: Bool?
     var photosSelectedCallback: (([Any]) -> ())?
-    
-    public init() {}
 }
 
 extension AMAssetManager {
@@ -467,33 +471,37 @@ extension AMAssetManager {
     
     #if os(iOS)
    
-//    public func saveImageToPhotos(
-//        _ image: AMImage
-//    ) async throws {
-//        let _: Void = try await withCheckedThrowingContinuation { continuation in
-//            saveImageToPhotos(image) { error in
-//                if let error = error {
-//                    continuation.resume(throwing: error)
-//                    return
-//                }
-//                continuation.resume()
-//            }
-//        }
-//    }
+    public func saveImageToPhotos(
+        _ image: AMImage
+    ) async throws {
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
+            saveImageToPhotos(image) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume()
+            }
+        }
+    }
     
     public func saveImageToPhotos(
-        _ image: AMImage/*, completion: @escaping (Error?) -> ()*/
+        _ image: AMImage,
+        completion: @escaping (Error?) -> ()
     ) {
-        /// Alpha Fix (Image to Data to Image)
+        /// Alpha Channel Fix (Image to Data to Image)
         guard let data: Data = image.pngData() else { return }
         guard let dataImage: UIImage = UIImage(data: data) else { return }
-        UIImageWriteToSavedPhotosAlbum(dataImage, self, nil/*#selector(saveCompleted)*/, nil)
-//        imageSaveCompletionHandler = completion
+        UIImageWriteToSavedPhotosAlbum(dataImage, self, #selector(imageSaveCompleted), nil)
+        imageSaveCompletionHandler = completion
     }
       
-//    @objc func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-//        imageSaveCompletionHandler?(error)
-//    }
+    @objc func imageSaveCompleted(_ image: UIImage,
+                                  didFinishSavingWithError error: Error?,
+                                  contextInfo: UnsafeRawPointer) {
+        imageSaveCompletionHandler?(error)
+        imageSaveCompletionHandler = nil
+    }
     
     public func saveVideoToPhotos(
         url: URL
@@ -510,20 +518,32 @@ extension AMAssetManager {
     }
     
     public func saveVideoToPhotos(
-        url: URL, completion: @escaping (Error?) -> ()
+        url: URL,
+        completion: @escaping (Error?) -> ()
     ) {
-//        UIVideoAtPathIsCompatibleWithSavedPhotosAlbum
-//        UISaveVideoAtPathToSavedPhotosAlbum
-        requestAuthorization {
-            PHPhotoLibrary.shared().performChanges({
-                let request = PHAssetCreationRequest.forAsset()
-                request.addResource(with: .video, fileURL: url, options: nil)
-            }) { result, error in
-                DispatchQueue.main.async {
-                    completion(error)
-                }
-            }
+        guard UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(url.path()) else {
+            completion(AssetError.videoNotCompatibleWithPhotosLibrary)
+            return
         }
+        UISaveVideoAtPathToSavedPhotosAlbum(url.path(), self, #selector(videoSaveCompleted), nil)
+        videoSaveCompletionHandler = completion
+//        requestAuthorization {
+//            PHPhotoLibrary.shared().performChanges({
+//                let request = PHAssetCreationRequest.forAsset()
+//                request.addResource(with: .video, fileURL: url, options: nil)
+//            }) { result, error in
+//                DispatchQueue.main.async {
+//                    completion(error)
+//                }
+//            }
+//        }
+    }
+    
+    @objc func videoSaveCompleted(_ videoPath: String?,
+                                  didFinishSavingWithError error: Error?,
+                                  contextInfo: UnsafeMutableRawPointer?) {
+        videoSaveCompletionHandler?(error)
+        videoSaveCompletionHandler = nil
     }
     
     public func requestAuthorization(
