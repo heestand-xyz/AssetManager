@@ -25,12 +25,13 @@ public final class AMAssetManager: ObservableObject {
         case image
         case video
         case lut
+        case gif
         case media
         case file(extension: String)
         public var types: [UTType] {
             switch self {
             case .image:
-                return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .gif, .icns]
+                return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .icns]
             case .video:
                 return [.video, .movie, .mpeg4Movie, .quickTimeMovie, .mpeg2Video]
             case .lut:
@@ -39,8 +40,10 @@ public final class AMAssetManager: ObservableObject {
                     types.append(cube)
                 }
                 return types
+            case .gif:
+                return [.gif]
             case .media:
-                return AssetType.image.types + AssetType.video.types + AssetType.lut.types
+                return AssetType.image.types + AssetType.video.types + AssetType.lut.types + AssetType.gif.types
             case .file(let filenameExtension):
                 if let type = UTType(filenameExtension: filenameExtension) {
                     return [type]
@@ -57,6 +60,8 @@ public final class AMAssetManager: ObservableObject {
             case .media:
                 return .any(of: [.images, .videos])
             case .file, .lut:
+                return nil
+            case .gif:
                 return nil
             }
         }
@@ -592,7 +597,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .lut:
+                case .lut, .gif:
                     break
                 }
             } else {
@@ -735,7 +740,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .lut:
+                case .lut, .gif:
                     break
                 }
             } else {
@@ -913,7 +918,25 @@ extension AMAssetManager {
                 
                 let provider = providers.removeFirst()
                 
-                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                if provider.hasItemConformingToTypeIdentifier(UTType.gif.identifier) {
+                    
+                    provider.loadItem(forTypeIdentifier: UTType.gif.identifier) { object, error in
+                        
+                        guard error == nil,
+                              let url: URL = object as? URL else {
+                            next()
+                            return
+                        }
+                        
+                        let name: String = url.deletingPathExtension().lastPathComponent
+                        
+                        let assetFile = AMAssetURLFile(name: name, url: url)
+                        
+                        assetFiles.append(assetFile)
+                        
+                        next()
+                    }
+                } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                     
                     provider.loadObject(ofClass: AMImage.self) { object, error in
                         
