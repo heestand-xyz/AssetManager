@@ -65,7 +65,30 @@ struct PhotosView: ViewRepresentable {
                 
                 for result in results {
                     
-                    if result.itemProvider.canLoadObject(ofClass: AMImage.self) {
+                    if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.gif.identifier) {
+                        
+                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
+                            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.gif.identifier) { url, error in
+                                if let error {
+                                    continuation.resume(throwing: error)
+                                    return
+                                }
+                                guard let url: URL else {
+                                    continuation.resume(returning: nil)
+                                    return
+                                }
+                                do {
+                                    let newURL = try Self.map(url: url)
+                                    continuation.resume(returning: newURL)
+                                } catch {
+                                    continuation.resume(throwing: error)
+                                }
+                            }
+                        }) {
+                            assets.append(url as Any)
+                        }
+                        
+                    } else if result.itemProvider.canLoadObject(ofClass: AMImage.self) {
                         
                         if let image: AMImage = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadObject(ofClass: AMImage.self, completionHandler: { provider, error in
@@ -92,22 +115,7 @@ struct PhotosView: ViewRepresentable {
                                     return
                                 }
                                 do {
-                                    let _ = url.startAccessingSecurityScopedResource()
-                                    
-                                    let folderURL: URL = FileManager.default.temporaryDirectory
-                                        .appending(component: "import-video")
-                                        .appending(component: "\(UUID())")
-                                    if !FileManager.default.fileExists(atPath: folderURL.path) {
-                                        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-                                    }
-                                    
-                                    let newURL: URL = folderURL.appending(path: url.lastPathComponent)
-                                    
-                                    let data = try Data(contentsOf: url)
-                                    try data.write(to: newURL)
-                                    
-                                    url.stopAccessingSecurityScopedResource()
-                                    
+                                    let newURL = try Self.map(url: url)
                                     continuation.resume(returning: newURL)
                                 } catch {
                                     continuation.resume(throwing: error)
@@ -122,6 +130,27 @@ struct PhotosView: ViewRepresentable {
                     pickedContent?(assets)
                 }
             }
+        }
+        
+        private static func map(url: URL) throws -> URL {
+            
+            let _ = url.startAccessingSecurityScopedResource()
+            
+            let folderURL: URL = FileManager.default.temporaryDirectory
+                .appending(component: "temp-media")
+                .appending(component: "\(UUID())")
+            if !FileManager.default.fileExists(atPath: folderURL.path) {
+                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+            }
+            
+            let newURL: URL = folderURL.appending(path: url.lastPathComponent)
+            
+            let data = try Data(contentsOf: url)
+            try data.write(to: newURL)
+            
+            url.stopAccessingSecurityScopedResource()
+            
+            return newURL
         }
     }
 }
