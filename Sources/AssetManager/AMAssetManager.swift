@@ -68,6 +68,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         case fileExtensionNotSupported(_ fileExtension: String)
         case badURLAccess
         case videoNotCompatibleWithPhotosLibrary
+        case alphaFixFailed
         var errorDescription: String? {
             switch self {
             case .badImageData:
@@ -80,6 +81,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return "Asset Manager - Bad URL Access"
             case .videoNotCompatibleWithPhotosLibrary:
                 return "Asset Manager - Video Not Compatible with Photos Library"
+            case .alphaFixFailed:
+                return "Asset Manager - Alpha Fix Failed"
             }
         }
     }
@@ -472,10 +475,11 @@ extension AMAssetManager {
     #if os(iOS)
    
     public func saveImageToPhotos(
-        _ image: AMImage
+        _ image: AMImage,
+        alphaFix: Bool = true
     ) async throws {
         let _: Void = try await withCheckedThrowingContinuation { continuation in
-            saveImageToPhotos(image) { error in
+            saveImageToPhotos(image, alphaFix: alphaFix) { error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
@@ -487,12 +491,20 @@ extension AMAssetManager {
     
     public func saveImageToPhotos(
         _ image: AMImage,
+        alphaFix: Bool = true,
         completion: @escaping (Error?) -> ()
     ) {
-        /// Alpha Channel Fix (Image to Data to Image)
-        guard let data: Data = image.pngData() else { return }
-        guard let dataImage: UIImage = UIImage(data: data) else { return }
-        UIImageWriteToSavedPhotosAlbum(dataImage, self, #selector(imageSaveCompleted), nil)
+        var image: AMImage = image
+        if alphaFix {
+            /// Alpha Channel Fix (Image to Data to Image)
+            guard let data: Data = image.pngData(),
+                  let dataImage: UIImage = UIImage(data: data) else {
+                completion(AssetError.alphaFixFailed)
+                return
+            }
+            image = dataImage
+        }
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted), nil)
         imageSaveCompletionHandler = completion
     }
       
