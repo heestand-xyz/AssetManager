@@ -74,6 +74,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         case badURLAccess
         case videoNotCompatibleWithPhotosLibrary
         case alphaFixFailed
+        case notAuthorized
         var errorDescription: String? {
             switch self {
             case .badImageData:
@@ -88,6 +89,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return "Asset Manager - Video Not Compatible with Photos Library"
             case .alphaFixFailed:
                 return "Asset Manager - Alpha Fix Failed"
+            case .notAuthorized:
+                return "Asset Manager - Not Authorized"
             }
         }
     }
@@ -512,6 +515,32 @@ extension AMAssetManager {
         UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted), nil)
         imageSaveCompletionHandler = completion
     }
+    
+    public func saveGIF(url: URL) async throws {
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
+            saveGIF(url: url) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume()
+            }
+        }
+    }
+    public func saveGIF(url: URL, completion: @escaping (Error?) -> ()) {
+        requestAuthorization { authorized in
+            guard authorized else {
+                completion(AssetError.notAuthorized)
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                let request = PHAssetCreationRequest.forAsset()
+                request.addResource(with: .photo, fileURL: url, options: nil)
+            }) { success, error in
+                completion(error)
+            }
+        }
+    }
       
     @objc func imageSaveCompleted(_ image: UIImage,
                                   didFinishSavingWithError error: Error?,
@@ -564,16 +593,18 @@ extension AMAssetManager {
     }
     
     public func requestAuthorization(
-        completion: @escaping () -> ()
+        completion: @escaping (Bool) -> ()
     ) {
         if PHPhotoLibrary.authorizationStatus() == .notDetermined {
             PHPhotoLibrary.requestAuthorization { status in
                 DispatchQueue.main.async {
-                    completion()
+                    completion(status == .authorized)
                 }
             }
         } else if PHPhotoLibrary.authorizationStatus() == .authorized {
-            completion()
+            completion(true)
+        } else {
+            completion(false)
         }
     }
     
