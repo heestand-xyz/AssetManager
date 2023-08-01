@@ -67,15 +67,15 @@ public final class AMAssetManager: NSObject, ObservableObject {
         }
     }
     
-    enum AssetError: LocalizedError {
+    public enum AssetError: LocalizedError {
         case badImageData
         case badPhotosObject
         case fileExtensionNotSupported(_ fileExtension: String)
         case badURLAccess
         case videoNotCompatibleWithPhotosLibrary
         case alphaFixFailed
-        case notAuthorized
-        var errorDescription: String? {
+        case notAuthorized(PHAuthorizationStatus)
+        public var errorDescription: String? {
             switch self {
             case .badImageData:
                 return "Asset Manager - Bad Image data"
@@ -89,8 +89,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return "Asset Manager - Video Not Compatible with Photos Library"
             case .alphaFixFailed:
                 return "Asset Manager - Alpha Fix Failed"
-            case .notAuthorized:
-                return "Asset Manager - Not Authorized"
+            case .notAuthorized(let status):
+                return "Asset Manager - Not Authorized (Status: \(status.rawValue))"
             }
         }
     }
@@ -528,9 +528,9 @@ extension AMAssetManager {
         }
     }
     public func saveGIF(url: URL, completion: @escaping (Error?) -> ()) {
-        requestAuthorization { authorized in
-            guard authorized else {
-                completion(AssetError.notAuthorized)
+        requestAuthorization(for: .addOnly) { status in
+            if status != .authorized {
+                completion(AssetError.notAuthorized(status))
                 return
             }
             PHPhotoLibrary.shared().performChanges({
@@ -593,18 +593,18 @@ extension AMAssetManager {
     }
     
     public func requestAuthorization(
-        completion: @escaping (Bool) -> ()
+        for level: PHAccessLevel,
+        completion: @escaping (PHAuthorizationStatus) -> ()
     ) {
-        if PHPhotoLibrary.authorizationStatus() == .notDetermined {
-            PHPhotoLibrary.requestAuthorization { status in
+        let status = PHPhotoLibrary.authorizationStatus(for: level)
+        if status == .notDetermined {
+            PHPhotoLibrary.requestAuthorization(for: level) { status in
                 DispatchQueue.main.async {
-                    completion(status == .authorized)
+                    completion(status)
                 }
             }
-        } else if PHPhotoLibrary.authorizationStatus() == .authorized {
-            completion(true)
         } else {
-            completion(false)
+            completion(status)
         }
     }
     
