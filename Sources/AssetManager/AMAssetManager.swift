@@ -837,7 +837,9 @@ extension AMAssetManager {
                             }
                             return AMAssetImageFile(name: name, image: image)
                         } else if case .media = type {
-                            if let image: UIImage = UIImage(contentsOfFile: url.path) {
+                            if url.pathExtension.lowercased() == "gif" {
+                                return AMAssetURLFile(name: name, url: url)
+                            } else if let image: UIImage = UIImage(contentsOfFile: url.path) {
                                 return AMAssetImageFile(name: name, image: image)
                             }
                         }
