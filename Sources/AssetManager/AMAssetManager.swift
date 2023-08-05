@@ -22,11 +22,13 @@ public final class AMAssetManager: NSObject, ObservableObject {
     }
     
     public enum AssetType {
+        
         case image
         case video
         case media
         case lut
         case file(extension: String)
+        
         public var types: [UTType] {
             switch self {
             case .image:
@@ -48,6 +50,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return []
             }
         }
+        
         public var filter: PHPickerFilter? {
             switch self {
             case .image:
@@ -60,7 +63,14 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return nil
             }
         }
-        static func isRawImage(type: UTType) -> Bool {
+        
+        public static func isRawImage(url: URL) -> Bool {
+            let format: String = url.pathExtension
+            guard let type = UTType(filenameExtension: format) else { return false }
+            return isRawImage(type: type)
+        }
+        
+        private static func isRawImage(type: UTType) -> Bool {
             // Raw Image Formats
             // CR2: Canon Raw version 2, used by Canon cameras.
             // NEF: Nikon Electronic Format, used by Nikon cameras.
@@ -80,6 +90,38 @@ public final class AMAssetManager: NSObject, ObservableObject {
             // MOS: Used by Leaf cameras.
             // IIQ: Used by Phase One cameras.
             return type.conforms(to: .rawImage)
+        }
+        
+        public static func isImage(url: URL) -> Bool {
+            let format: String = url.pathExtension
+            guard let type = UTType(filenameExtension: format) else { return false }
+            return type.conforms(to: .image)
+        }
+        
+        public static func image(url: URL) -> AMAssetFile? {
+            let name: String = url.deletingPathExtension().lastPathComponent
+            let format: String = url.pathExtension
+            guard let type = UTType(filenameExtension: format) else { return nil }
+            if type == .gif {
+                return AMAssetURLFile(name: name, url: url)
+            } else if isRawImage(type: type) {
+                guard let data: Data = try? Data(contentsOf: url) else { return nil }
+                guard let rawFilter = CIRAWFilter(imageURL: url) else { return nil }
+                guard let rawImage: CIImage = rawFilter.outputImage else { return nil }
+                #if os(macOS)
+                let rep = NSCIImageRep(ciImage: rawImage)
+                let image = NSImage(size: rep.size)
+                image.addRepresentation(rep)
+                #else
+                let image = UIImage(ciImage: rawImage)
+                #endif
+                return AMAssetRawImageFile(name: name, format: format, image: image, data: data)
+            } else if type.conforms(to: .image) {
+                if let image: AMImage = AMImage(contentsOfFile: url.path) {
+                    return AMAssetImageFile(name: name, image: image)
+                }
+            }
+            return nil
         }
     }
     
@@ -660,8 +702,8 @@ extension AMAssetManager {
                 case .media:
                     openMedia { result in
                         switch result {
-                        case .success(let assetURLFile):
-                            completion(.success(assetURLFile))
+                        case .success(let assetFile):
+                            completion(.success(assetFile))
                         case .failure(let error):
                             completion(.failure(error))
                         }
@@ -704,15 +746,15 @@ extension AMAssetManager {
                 let name: String = url.deletingPathExtension().lastPathComponent
                 guard url.startAccessingSecurityScopedResource() else { return }
                 defer { url.stopAccessingSecurityScopedResource() }
-                if case .image = type {
-                    guard let image: UIImage = UIImage(contentsOfFile: url.path) else {
+                if AssetType.isImage(url: url) {
+                    guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                         completion(.failure(AssetError.badImageData))
                         return
                     }
-                    completion(.success(AMAssetImageFile(name: name, image: image)))
-                } else {
-                    completion(.success(AMAssetURLFile(name: name, url: url)))
+                    completion(.success(assetFile))
+                    return
                 }
+                completion(.success(AMAssetURLFile(name: name, url: url)))
             }
             showOpenFilesPicker = true
             #endif
@@ -729,24 +771,24 @@ extension AMAssetManager {
                     completion(.success(nil))
                     return
                 }
-                if case .image = type {
-                    guard let image: AMImage = object as? AMImage else {
-                        completion(.failure(AssetError.badPhotosObject))
-                        return
-                    }
+                if let image: AMImage = object as? AMImage {
                     completion(.success(AMAssetImageFile(name: nil, image: image)))
                     return
-                } else if case .media = type {
-                    if let image: AMImage = object as? AMImage {
-                        completion(.success(AMAssetImageFile(name: nil, image: image)))
-                        return
-                    }
                 }
                 guard let url: URL = object as? URL else {
                     completion(.failure(AssetError.badPhotosObject))
                     return
                 }
-                completion(.success(AMAssetURLFile(name: nil, url: url)))
+                if AssetType.isImage(url: url) {
+                    guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                        completion(.failure(AssetError.badImageData))
+                        return
+                    }
+                    completion(.success(assetFile))
+                    return
+                }
+                let name: String = url.deletingPathExtension().lastPathComponent
+                completion(.success(AMAssetURLFile(name: name, url: url)))
             }
             showPhotosPicker = true
         case .camera:
@@ -803,8 +845,8 @@ extension AMAssetManager {
                 case .media:
                     openMedia { result in
                         switch result {
-                        case .success(let assetURLFiles):
-                            completion(.success(assetURLFiles))
+                        case .success(let assetFiles):
+                            completion(.success(assetFiles))
                         case .failure(let error):
                             completion(.failure(error))
                         }
@@ -847,17 +889,11 @@ extension AMAssetManager {
                             throw AssetError.badURLAccess
                         }
                         defer { url.stopAccessingSecurityScopedResource() }
-                        if case .image = type {
-                            guard let image: UIImage = UIImage(contentsOfFile: url.path) else {
+                        if AssetType.isImage(url: url) {
+                            guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                                 throw AssetError.badImageData
                             }
-                            return AMAssetImageFile(name: name, image: image)
-                        } else if case .media = type {
-                            if url.pathExtension.lowercased() == "gif" {
-                                return AMAssetURLFile(name: name, url: url)
-                            } else if let image: UIImage = UIImage(contentsOfFile: url.path) {
-                                return AMAssetImageFile(name: name, image: image)
-                            }
+                            return assetFile
                         }
                         return AMAssetURLFile(name: name, url: url)
                     }
@@ -879,18 +915,17 @@ extension AMAssetManager {
                 self?.photosSelectedCallback = nil
                 do {
                     let files: [AMAssetFile] = try objects.map { object in
-                        if case .image = type {
-                            guard let image: AMImage = object as? AMImage else {
-                                throw AssetError.badPhotosObject
-                            }
+                        if let image = object as? AMImage {
                             return AMAssetImageFile(name: nil, image: image)
-                        } else if case .media = type {
-                            if let image: AMImage = object as? AMImage {
-                                return AMAssetImageFile(image: image)
-                            }
                         }
                         guard let url: URL = object as? URL else {
                             throw AssetError.badPhotosObject
+                        }
+                        if AssetType.isImage(url: url) {
+                            guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                                throw AssetError.badImageData
+                            }
+                            return assetFile
                         }
                         return AMAssetURLFile(url: url)
                      }

@@ -145,8 +145,7 @@ struct PhotosView: ViewRepresentable {
             
             let newURL: URL = folderURL.appending(path: url.lastPathComponent)
             
-            let data = try Data(contentsOf: url)
-            try data.write(to: newURL)
+            try FileManager.default.copyItem(at: url, to: newURL)
             
             url.stopAccessingSecurityScopedResource()
             

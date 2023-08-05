@@ -97,9 +97,28 @@ extension AMAssetManager {
                   allowedFileTypes: AMAssetManager.AssetType.video.types, completion: completion)
     }
     
-    func openMedia(completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
+    func openMedia(completion: @escaping (Result<AMAssetFile?, Error>) -> ()) {
         openFile(title: "Import Media",
-                 allowedFileTypes: AMAssetManager.AssetType.media.types, completion: completion)
+                 allowedFileTypes: AMAssetManager.AssetType.media.types) { result in
+            switch result {
+            case .success(let urlFile):
+                if let urlFile {
+                    if AssetType.isImage(url: urlFile.url) {
+                        guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        completion(.success(assetFile))
+                        return
+                    }
+                    completion(.success(urlFile))
+                } else {
+                    completion(.success(nil))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
     }
     
     func openMedia(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
@@ -107,14 +126,14 @@ extension AMAssetManager {
                   allowedFileTypes: AMAssetManager.AssetType.media.types) { result in
             switch result {
             case .success(let urlFiles):
-                let files: [AMAssetFile] = urlFiles.map { urlFile in
-                    if urlFile.url.pathExtension.lowercased() != "gif",
-                       let data: Data = try? Data(contentsOf: urlFile.url),
-                       let image = NSImage(data: data) {
-                        return AMAssetImageFile(name: urlFile.name, image: image)
-                    } else {
-                        return urlFile
+                let files: [AMAssetFile] = urlFiles.compactMap { urlFile in
+                    if AssetType.isImage(url: urlFile.url) {
+                        guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
+                            return nil
+                        }
+                        return assetFile
                     }
+                    return urlFile
                 }
                 completion(.success(files))
             case .failure(let error):

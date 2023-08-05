@@ -48,3 +48,16 @@ public struct AMAssetImageFile: AMAssetFile {
         self.image = image
     }
 }
+
+public struct AMAssetRawImageFile: AMAssetFile {
+    public let name: String?
+    public let format: String
+    public let image: AMImage
+    public let data: Data
+    public init(name: String? = nil, format: String, image: AMImage, data: Data) {
+        self.name = name
+        self.format = format
+        self.image = image
+        self.data = data
+    }
+}
