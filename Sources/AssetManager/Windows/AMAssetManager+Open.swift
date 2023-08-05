@@ -99,12 +99,12 @@ extension AMAssetManager {
     
     func openMedia(completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
         openFile(title: "Import Media",
-                 allowedFileTypes: AMAssetManager.AssetType.image.types + AMAssetManager.AssetType.video.types + AMAssetManager.AssetType.gif.types, completion: completion)
+                 allowedFileTypes: AMAssetManager.AssetType.media.types, completion: completion)
     }
     
     func openMedia(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
         openFiles(title: "Import Media",
-                  allowedFileTypes: AMAssetManager.AssetType.image.types + AMAssetManager.AssetType.video.types + AMAssetManager.AssetType.gif.types) { result in
+                  allowedFileTypes: AMAssetManager.AssetType.media.types) { result in
             switch result {
             case .success(let urlFiles):
                 let files: [AMAssetFile] = urlFiles.map { urlFile in

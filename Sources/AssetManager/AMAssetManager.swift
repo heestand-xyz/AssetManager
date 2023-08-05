@@ -24,26 +24,23 @@ public final class AMAssetManager: NSObject, ObservableObject {
     public enum AssetType {
         case image
         case video
-        case lut
-        case gif
         case media
+        case lut
         case file(extension: String)
         public var types: [UTType] {
             switch self {
             case .image:
-                return [.image, .png, .jpeg, .heic, .heif, .tiff, .bmp, .icns]
+                return [.image]
             case .video:
-                return [.video, .movie, .mpeg4Movie, .quickTimeMovie, .mpeg2Video]
+                return [.movie]
+            case .media:
+                return AssetType.image.types + AssetType.video.types
             case .lut:
                 var types: [UTType] = []
                 if let cube = UTType(filenameExtension: "cube") {
                     types.append(cube)
                 }
                 return types
-            case .gif:
-                return [.gif]
-            case .media:
-                return AssetType.image.types + AssetType.video.types + AssetType.lut.types + AssetType.gif.types
             case .file(let filenameExtension):
                 if let type = UTType(filenameExtension: filenameExtension) {
                     return [type]
@@ -61,9 +58,28 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return .any(of: [.images, .videos])
             case .file, .lut:
                 return nil
-            case .gif:
-                return nil
             }
+        }
+        static func isRawImage(type: UTType) -> Bool {
+            // Raw Image Formats
+            // CR2: Canon Raw version 2, used by Canon cameras.
+            // NEF: Nikon Electronic Format, used by Nikon cameras.
+            // ARW: Sony Alpha Raw, used by Sony cameras.
+            // ORF: Olympus Raw Format, used by Olympus cameras.
+            // RAF: Raw Image File, used by Fujifilm cameras.
+            // RW2: Raw file format used by Panasonic cameras.
+            // DNG: Digital Negative, an open standard raw file format created by Adobe.
+            // SRF: Sony Raw Files, used in older Sony models. (1)
+            // SR2: Sony Raw Files, used in older Sony models. (2)
+            // PEF: Pentax Electronic File, used by Pentax cameras.
+            // NRW: A variation of NEF used in some of Nikon's compact cameras.
+            // KDC: Kodak Digital Camera Raw Image Format, used by Kodak.
+            // MRW: Minolta Raw, used by older Minolta and newer Konica Minolta cameras.
+            // 3FR: Hasselblad's 3F Raw Image, used by Hasselblad cameras.
+            // X3F: Sigma Raw format, used by Sigma cameras.
+            // MOS: Used by Leaf cameras.
+            // IIQ: Used by Phase One cameras.
+            return type.conforms(to: .rawImage)
         }
     }
     
@@ -660,7 +676,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .lut, .gif:
+                case .lut:
                     break
                 }
             } else {
@@ -803,7 +819,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .lut, .gif:
+                case .lut:
                     break
                 }
             } else {

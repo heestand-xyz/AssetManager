@@ -35,7 +35,7 @@ extension View {
     ) -> some View {
         
         self.onDrop(
-            of: AMAssetManager.AssetType.image.types,
+            of: AMAssetManager.AssetType.video.types,
             isTargeted: isTargeted
         ) { providers in
             
