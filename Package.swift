@@ -15,12 +15,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/heestand-xyz/MultiViews", from: "2.0.0"),
+        .package(url: "https://github.com/heestand-xyz/TextureMap", from: "0.7.5"),
     ],
     targets: [
         .target(
             name: "AssetManager",
             dependencies: [
                 "MultiViews",
+                "TextureMap",
             ]),
     ]
 )

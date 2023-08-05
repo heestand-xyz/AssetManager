@@ -88,6 +88,29 @@ struct PhotosView: ViewRepresentable {
                             assets.append(url as Any)
                         }
                         
+                    } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.rawImage.identifier) {
+                        
+                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
+                            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.rawImage.identifier) { url, error in
+                                if let error {
+                                    continuation.resume(throwing: error)
+                                    return
+                                }
+                                guard let url: URL else {
+                                    continuation.resume(returning: nil)
+                                    return
+                                }
+                                do {
+                                    let newURL = try Self.map(url: url)
+                                    continuation.resume(returning: newURL)
+                                } catch {
+                                    continuation.resume(throwing: error)
+                                }
+                            }
+                        }) {
+                            assets.append(url as Any)
+                        }
+                        
                     } else if result.itemProvider.canLoadObject(ofClass: AMImage.self) {
                         
                         if let image: AMImage = try? await withCheckedThrowingContinuation({ continuation in
@@ -102,7 +125,7 @@ struct PhotosView: ViewRepresentable {
                             assets.append(image as Any)
                         }
                         
-                    } else {
+                    } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.movie.identifier) {
                         
                         if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in

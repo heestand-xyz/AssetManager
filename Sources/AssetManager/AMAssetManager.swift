@@ -12,6 +12,7 @@ import UIKit
 #endif
 import UniformTypeIdentifiers
 import PhotosUI
+import TextureMap
 
 public final class AMAssetManager: NSObject, ObservableObject {
     
@@ -113,7 +114,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 let image = NSImage(size: rep.size)
                 image.addRepresentation(rep)
                 #else
-                let image = UIImage(ciImage: rawImage)
+                guard let cgImage: CGImage = try? TextureMap.cgImage(ciImage: rawImage, colorSpace: .sRGB, bits: ._16) else { return nil }
+                guard let image: UIImage = try? TextureMap.image(cgImage: cgImage) else {  return nil }
                 #endif
                 return AMAssetRawImageFile(name: name, format: format, image: image, data: data)
             } else if type.conforms(to: .image) {
