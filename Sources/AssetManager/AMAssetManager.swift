@@ -108,6 +108,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
             } else if isRawImage(type: type) {
                 guard let data: Data = try? Data(contentsOf: url) else { return nil }
                 guard let rawFilter = CIRAWFilter(imageURL: url) else { return nil }
+                rawFilter.extendedDynamicRangeAmount = 2.0
                 guard let rawImage: CIImage = rawFilter.outputImage else { return nil }
                 #if os(macOS)
                 let rep = NSCIImageRep(ciImage: rawImage)
