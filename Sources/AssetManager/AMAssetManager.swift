@@ -288,7 +288,7 @@ extension AMAssetManager {
     #if os(macOS)
     
     public func importImages(
-        completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         openImages(completion: completion)
     }
@@ -303,15 +303,20 @@ extension AMAssetManager {
     
     public func importImages(
         from source: AssetSource,
-        completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         importAssets(.image, from: source) { result in
             switch result {
             case .success(let assetFiles):
-                let assetImageFiles: [AMAssetImageFile] = assetFiles.compactMap({ file in
-                   file as? AMAssetImageFile
+                let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
+                    if let imageFile = file as? AMAssetImageFile {
+                        return imageFile
+                    } else if let rawImageFile = file as? AMAssetRawImageFile {
+                        return rawImageFile
+                    }
+                    return nil
                 })
-                completion(.success(assetImageFiles))
+                completion(.success(assetFiles))
             case .failure(let error):
                 completion(.failure(error))
             }

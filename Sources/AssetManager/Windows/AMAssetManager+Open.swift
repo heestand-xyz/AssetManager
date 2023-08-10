@@ -59,25 +59,19 @@ extension AMAssetManager {
                   allowedFileTypes: AMAssetManager.AssetType.image.types, completion: completion)
     }
     
-    func openImages(completion: @escaping (Result<[AMAssetImageFile], Error>) -> ()) {
+    func openImages(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
         openFiles(title: "Import Images",
                   allowedFileTypes: AMAssetManager.AssetType.image.types) { result in
             switch result {
             case .success(let urlFiles):
-                var imageFiles: [AMAssetImageFile] = []
+                var imageFiles: [AMAssetFile] = []
                 for urlFile in urlFiles {
-                    do {
-                        let data: Data = try Data(contentsOf: urlFile.url)
-                        guard let image = NSImage(data: data) else {
-                            completion(.failure(AssetError.badImageData))
-                            return
-                        }
-                        let imageFile = AMAssetImageFile(name: urlFile.name, image: image)
-                        imageFiles.append(imageFile)
-                    } catch {
-                        completion(.failure(AssetOpenError.badImageData))
+                    guard AMAssetManager.AssetType.isRawImage(url: urlFile.url),
+                          let imageFile = AMAssetManager.AssetType.image(url: urlFile.url) else {
+                        completion(.failure(AssetError.badImageData))
                         return
                     }
+                    imageFiles.append(imageFile)
                 }
                 completion(.success(imageFiles))
             case .failure(let error):
