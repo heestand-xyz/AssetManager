@@ -7,7 +7,7 @@
 
 import Foundation
 import SwiftUI
-#if os(iOS)
+#if canImport(UIKit)
 import UIKit
 #endif
 import UniformTypeIdentifiers
@@ -169,7 +169,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         }
     }
     
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     
     @Published var showOpenFilesPicker: Bool = false
     var filesTypes: [UTType]?
@@ -205,7 +205,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
 
 extension AMAssetManager {
     
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
     
     public func share(image: AMImage) {
         shareItem = image
@@ -537,7 +537,7 @@ extension AMAssetManager {
         url: URL,
         asCopy: Bool = true
     ) {
-        #if os(iOS)
+        #if os(iOS) || os(xrOS)
         fileUrl = url
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
@@ -546,7 +546,7 @@ extension AMAssetManager {
         #endif
     }
     
-    #if os(iOS)
+    #if os(iOS) || os(xrOS)
    
     public func saveImageToPhotos(
         _ image: AMImage,
@@ -739,7 +739,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS)
+            #elseif os(iOS) || os(xrOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = false
             filesSelectedCallback = { [weak self] urls in
@@ -882,7 +882,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS)
+            #elseif os(iOS) || os(xrOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = true
             filesSelectedCallback = { [weak self] urls in
@@ -948,9 +948,6 @@ extension AMAssetManager {
         }
     }
 }
-
-// FIXME: Archive Error on macOS
-//#if os(iOS)
 
 extension AMAssetManager {
     
@@ -1174,8 +1171,6 @@ extension AMAssetManager {
         next()
     }
 }
-
-//#endif
 
 #if os(macOS)
 
