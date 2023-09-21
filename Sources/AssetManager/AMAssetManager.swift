@@ -633,11 +633,12 @@ extension AMAssetManager {
         url: URL,
         completion: @escaping (Error?) -> ()
     ) {
-        guard UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(url.path()) else {
+        let path: String = url.path(percentEncoded: false)
+        guard UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path) else {
             completion(AssetError.videoNotCompatibleWithPhotosLibrary)
             return
         }
-        UISaveVideoAtPathToSavedPhotosAlbum(url.path(), self, #selector(videoSaveCompleted), nil)
+        UISaveVideoAtPathToSavedPhotosAlbum(path, self, #selector(videoSaveCompleted), nil)
         videoSaveCompletionHandler = completion
 //        requestAuthorization {
 //            PHPhotoLibrary.shared().performChanges({
