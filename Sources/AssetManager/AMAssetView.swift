@@ -12,7 +12,7 @@ struct AMAssetView<Content: View>: View {
     
     var body: some View {
         content()
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showOpenFilesPicker, content: {
                 OpenFilesView(types: assetManager.filesTypes ?? [],
                               multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
@@ -33,6 +33,8 @@ struct AMAssetView<Content: View>: View {
                     SaveFilesView(url: url, asCopy: assetManager.saveFileAsCopy)
                 }
             })
+#endif
+#if os(iOS)
             .fullScreenCover(isPresented: $assetManager.showCameraPicker) {
                 if let mode = assetManager.cameraMode {
                     CameraView(isShowing: $assetManager.showCameraPicker,
@@ -56,7 +58,7 @@ struct AMAssetView<Content: View>: View {
                     assetManager.photosSelectedCallback?([])
                 }
             })
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
                 assetManager.shareItem = nil
             }) {
