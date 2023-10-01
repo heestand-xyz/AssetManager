@@ -169,7 +169,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         }
     }
     
-    #if os(iOS) || os(xrOS)
+    #if os(iOS) || os(visionOS)
     
     @Published var showOpenFilesPicker: Bool = false
     var filesTypes: [UTType]?
@@ -205,7 +205,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
 
 extension AMAssetManager {
     
-    #if os(iOS) || os(xrOS)
+    #if os(iOS) || os(visionOS)
     
     public func share(image: AMImage) {
         shareItem = image
@@ -537,7 +537,7 @@ extension AMAssetManager {
         url: URL,
         asCopy: Bool = true
     ) {
-        #if os(iOS) || os(xrOS)
+        #if os(iOS) || os(visionOS)
         fileUrl = url
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
@@ -546,7 +546,7 @@ extension AMAssetManager {
         #endif
     }
     
-    #if os(iOS) || os(xrOS)
+    #if os(iOS) || os(visionOS)
    
     public func saveImageToPhotos(
         _ image: AMImage,
@@ -739,7 +739,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS) || os(xrOS)
+            #elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = false
             filesSelectedCallback = { [weak self] urls in
@@ -882,7 +882,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS) || os(xrOS)
+            #elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = true
             filesSelectedCallback = { [weak self] urls in

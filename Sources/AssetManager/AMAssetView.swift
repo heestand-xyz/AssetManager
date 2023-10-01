@@ -12,7 +12,7 @@ struct AMAssetView<Content: View>: View {
     
     var body: some View {
         content()
-#if os(iOS) || os(xrOS)
+#if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showOpenFilesPicker, content: {
                 OpenFilesView(types: assetManager.filesTypes ?? [],
                               multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
@@ -58,7 +58,7 @@ struct AMAssetView<Content: View>: View {
                     assetManager.photosSelectedCallback?([])
                 }
             })
-#if os(iOS) || os(xrOS)
+#if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
                 assetManager.shareItem = nil
             }) {

@@ -5,7 +5,7 @@
 //  Created by Anton Heestand on 2020-07-05.
 //
 
-#if os(iOS) || os(xrOS)
+#if os(iOS) || os(visionOS)
 
 import UIKit
 import SwiftUI
