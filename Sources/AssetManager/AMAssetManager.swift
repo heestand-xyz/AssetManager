@@ -186,11 +186,13 @@ public final class AMAssetManager: NSObject, ObservableObject {
     @Published var showShare: Bool = false
     var shareItem: Any?
     
+    #if os(iOS)
     @Published var showCameraPicker: Bool = false
     var cameraMode: UIImagePickerController.CameraCaptureMode?
     var cameraImageCallback: ((UIImage) -> ())?
     var cameraVideoCallback: ((URL) -> ())?
     var cameraCancelCallback: (() -> ())?
+    #endif
     
     private var imageSaveCompletionHandler: ((Error?) -> ())?
     private var videoSaveCompletionHandler: ((Error?) -> ())?

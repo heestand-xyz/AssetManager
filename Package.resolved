@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/CoreGraphicsExtensions",
       "state" : {
-        "revision" : "34c356d232ba6c5b18700ce3e49846f7f6d6edc9",
-        "version" : "1.3.5"
+        "revision" : "d709d012c874482240c0cffc0e458d95c0ede8c8",
+        "version" : "1.5.0"
       }
     },
     {
@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/MultiViews",
       "state" : {
-        "revision" : "e0eb527441a1389d17909e67147c2e84e8183741",
-        "version" : "2.0.0"
+        "revision" : "4016e54e55fa2a14958259a20aafa11292d39146",
+        "version" : "2.1.0"
       }
     },
     {
@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/TextureMap",
       "state" : {
-        "revision" : "cef3c3da51a20c9ecf29f9d1b537e2a8c4788dd3",
-        "version" : "0.7.5"
+        "revision" : "0ffd34d628365fce171ca120b6a481a2f9e22da0",
+        "version" : "1.0.0"
       }
     }
   ],
