@@ -258,9 +258,11 @@ extension AMAssetManager {
     public func importImage(
         from source: AssetSource
     ) async throws -> AMAssetImageFile? {
-        try await withCheckedThrowingContinuation { continuation in
-            importImage(from: source) { result in
-                continuation.resume(with: result)
+        try await withCheckedThrowingContinuation { [weak self] continuation in
+            DispatchQueue.main.async {
+                self?.importImage(from: source) { result in
+                    continuation.resume(with: result)
+                }
             }
         }
     }
