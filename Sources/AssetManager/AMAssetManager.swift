@@ -184,7 +184,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
     var fileUrls: [URL]?
     
     @Published var showShare: Bool = false
-    var shareItem: Any?
+    var shareItems: [Any]?
     
     #if os(iOS)
     @Published var showCameraPicker: Bool = false
@@ -210,12 +210,22 @@ extension AMAssetManager {
     #if os(iOS) || os(visionOS)
     
     public func share(image: AMImage) {
-        shareItem = image
+        shareItems = [image]
+        showShare = true
+    }
+    
+    public func share(images: [AMImage]) {
+        shareItems = images
         showShare = true
     }
     
     public func share(url: URL) {
-        shareItem = url
+        shareItems = [url]
+        showShare = true
+    }
+    
+    public func share(urls: [URL]) {
+        shareItems = urls
         showShare = true
     }
     
@@ -557,7 +567,7 @@ extension AMAssetManager {
         asCopy: Bool = true
     ) throws {
         #if os(iOS) || os(visionOS)
-        fileUrls = [url]
+        fileUrls = urls
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
         #elseif os(macOS)
