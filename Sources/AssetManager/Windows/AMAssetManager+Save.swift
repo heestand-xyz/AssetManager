@@ -50,6 +50,31 @@ extension AMAssetManager {
             }
         }
     }
+    
+    func saveFilesInFolder(_ items: [(data: Data, name: String)],
+                           title: String? = nil,
+                           completion: ((Error?) -> ())? = nil) {
+        openFolder(title: title ?? "Save Files in Folder") { result in
+            switch result {
+            case .success(let folderURL):
+                guard let folderURL else {
+                    completion?(nil)
+                    return
+                }
+                do {
+                    for item in items {
+                        let url = folderURL.appending(component: item.name)
+                        try item.data.write(to: url)
+                    }
+                    completion?(nil)
+                } catch {
+                    completion?(error)
+                }
+            case .failure(let error):
+                completion?(error)
+            }
+        }
+    }
 }
 
 #endif

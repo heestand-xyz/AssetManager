@@ -181,7 +181,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
     
     @Published var showSaveFilePicker: Bool = false
     var saveFileAsCopy: Bool = true
-    var fileUrl: URL?
+    var fileUrls: [URL]?
     
     @Published var showShare: Bool = false
     var shareItem: Any?
@@ -539,14 +539,34 @@ extension AMAssetManager {
     
     public func saveToFiles(
         url: URL,
+        title: String? = nil,
         asCopy: Bool = true
     ) {
         #if os(iOS) || os(visionOS)
-        fileUrl = url
+        fileUrls = [url]
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
         #elseif os(macOS)
-        saveFile(url: url, completion: nil)
+        saveFile(url: url, title: title, completion: nil)
+        #endif
+    }
+    
+    public func saveToFiles(
+        urls: [URL],
+        title: String? = nil,
+        asCopy: Bool = true
+    ) throws {
+        #if os(iOS) || os(visionOS)
+        fileUrls = [url]
+        showSaveFilePicker = true
+        saveFileAsCopy = asCopy
+        #elseif os(macOS)
+        var items: [(data: Data, name: String)] = []
+        for url in urls {
+            let item = (data: try Data(contentsOf: url), name: url.lastPathComponent)
+            items.append(item)
+        }
+        saveFilesInFolder(items, title: title)
         #endif
     }
     

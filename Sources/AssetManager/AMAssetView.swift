@@ -29,8 +29,8 @@ struct AMAssetView<Content: View>: View {
                 }
             })
             .sheet(isPresented: $assetManager.showSaveFilePicker, content: {
-                if let url: URL = assetManager.fileUrl {
-                    SaveFilesView(url: url, asCopy: assetManager.saveFileAsCopy)
+                if let urls: [URL] = assetManager.fileUrls {
+                    SaveFilesView(urls: urls, asCopy: assetManager.saveFileAsCopy)
                 }
             })
 #endif
