@@ -14,22 +14,27 @@ extension AMAssetManager {
     
     func saveFile(url: URL,
                   title: String? = nil,
-                  completion: ((Error?) -> ())? = nil) {
+                  completion: ((Result<URL?, Error>) -> ())? = nil) {
         do {
             
             let data: Data = try Data(contentsOf: url)
             
-            saveFile(data: data, title: title, name: url.lastPathComponent, completion: completion)
+            saveFile(
+                data: data,
+                title: title,
+                name: url.lastPathComponent,
+                completion: completion
+            )
             
         } catch {
-            completion?(error)
+            completion?(.failure(error))
         }
     }
     
     func saveFile(data: Data,
                   title: String? = nil,
                   name: String,
-                  completion: ((Error?) -> ())? = nil) {
+                  completion: ((Result<URL?, Error>) -> ())? = nil) {
         let savePanel = NSSavePanel()
         savePanel.title = title ?? "Save File"
         savePanel.canCreateDirectories = true
@@ -38,40 +43,42 @@ extension AMAssetManager {
         savePanel.begin { response in
             
             guard response != .cancel, let url: URL = savePanel.url else {
-                completion?(nil)
+                completion?(.success(nil))
                 return
             }
             
             do {
                 try data.write(to: url)
-                completion?(nil)
+                completion?(.success(url))
             } catch {
-                completion?(error)
+                completion?(.failure(error))
             }
         }
     }
     
     func saveFilesInFolder(_ items: [(data: Data, name: String)],
                            title: String? = nil,
-                           completion: ((Error?) -> ())? = nil) {
+                           completion: ((Result<[URL]?, Error>) -> ())? = nil) {
         openFolder(title: title ?? "Save Files in Folder") { result in
             switch result {
             case .success(let folderURL):
                 guard let folderURL else {
-                    completion?(nil)
+                    completion?(.success(nil))
                     return
                 }
                 do {
+                    var urls: [URL] = []
                     for item in items {
                         let url = folderURL.appending(component: item.name)
                         try item.data.write(to: url)
+                        urls.append(url)
                     }
-                    completion?(nil)
+                    completion?(.success(urls))
                 } catch {
-                    completion?(error)
+                    completion?(.failure(error))
                 }
             case .failure(let error):
-                completion?(error)
+                completion?(.failure(error))
             }
         }
     }

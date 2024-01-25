@@ -182,6 +182,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
     @Published var showSaveFilePicker: Bool = false
     var saveFileAsCopy: Bool = true
     var fileUrls: [URL]?
+    var saveFileCompletion: (([URL]?) -> ())?
     
     @Published var showShare: Bool = false
     var shareItems: [Any]?
@@ -551,13 +552,30 @@ extension AMAssetManager {
         url: URL,
         title: String? = nil,
         asCopy: Bool = true
+    ) async throws -> URL? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveToFiles(url: url, title: title, asCopy: asCopy) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveToFiles(
+        url: URL,
+        title: String? = nil,
+        asCopy: Bool = true,
+        completion: ((Result<URL?, Error>) -> ())? = nil
     ) {
         #if os(iOS) || os(visionOS)
         fileUrls = [url]
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
+        saveFileCompletion = { [weak self] urls in
+            completion?(.success(urls?.first))
+            self?.saveFileCompletion = nil
+        }
         #elseif os(macOS)
-        saveFile(url: url, title: title, completion: nil)
+        saveFile(url: url, title: title, completion: completion)
         #endif
     }
     
@@ -565,18 +583,39 @@ extension AMAssetManager {
         urls: [URL],
         title: String? = nil,
         asCopy: Bool = true
-    ) throws {
+    ) async throws -> [URL]? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveToFiles(urls: urls, title: title, asCopy: asCopy) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveToFiles(
+        urls: [URL],
+        title: String? = nil,
+        asCopy: Bool = true,
+        completion: ((Result<[URL]?, Error>) -> ())? = nil
+    ) {
         #if os(iOS) || os(visionOS)
         fileUrls = urls
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
-        #elseif os(macOS)
-        var items: [(data: Data, name: String)] = []
-        for url in urls {
-            let item = (data: try Data(contentsOf: url), name: url.lastPathComponent)
-            items.append(item)
+        saveFileCompletion = { [weak self] urls in
+            completion?(.success(urls))
+            self?.saveFileCompletion = nil
         }
-        saveFilesInFolder(items, title: title)
+        #elseif os(macOS)
+        do {
+            var items: [(data: Data, name: String)] = []
+            for url in urls {
+                let item = (data: try Data(contentsOf: url), name: url.lastPathComponent)
+                items.append(item)
+            }
+            saveFilesInFolder(items, title: title, completion: completion)
+        } catch {
+            completion?(.failure(error))
+        }
         #endif
     }
     
