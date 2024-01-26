@@ -59,26 +59,28 @@ extension AMAssetManager {
     func saveFilesInFolder(_ items: [(data: Data, name: String)],
                            title: String? = nil,
                            completion: ((Result<[URL]?, Error>) -> ())? = nil) {
-        openFolder(title: title ?? "Save Files in Folder") { result in
-            switch result {
-            case .success(let folderURL):
-                guard let folderURL else {
-                    completion?(.success(nil))
-                    return
-                }
-                do {
-                    var urls: [URL] = []
-                    for item in items {
-                        let url = folderURL.appending(component: item.name)
-                        try item.data.write(to: url)
-                        urls.append(url)
+        DispatchQueue.main.async {
+            self.openFolder(title: title ?? "Save Files in Folder") { result in
+                switch result {
+                case .success(let folderURL):
+                    guard let folderURL else {
+                        completion?(.success(nil))
+                        return
                     }
-                    completion?(.success(urls))
-                } catch {
+                    do {
+                        var urls: [URL] = []
+                        for item in items {
+                            let url = folderURL.appending(component: item.name)
+                            try item.data.write(to: url)
+                            urls.append(url)
+                        }
+                        completion?(.success(urls))
+                    } catch {
+                        completion?(.failure(error))
+                    }
+                case .failure(let error):
                     completion?(.failure(error))
                 }
-            case .failure(let error):
-                completion?(.failure(error))
             }
         }
     }

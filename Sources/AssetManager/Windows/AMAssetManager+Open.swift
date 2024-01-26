@@ -66,8 +66,7 @@ extension AMAssetManager {
             case .success(let urlFiles):
                 var imageFiles: [AMAssetFile] = []
                 for urlFile in urlFiles {
-                    guard AMAssetManager.AssetType.isRawImage(url: urlFile.url),
-                          let imageFile = AMAssetManager.AssetType.image(url: urlFile.url) else {
+                    guard let imageFile = AMAssetManager.AssetType.image(url: urlFile.url) else {
                         completion(.failure(AssetError.badImageData))
                         return
                     }
