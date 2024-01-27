@@ -282,20 +282,22 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
-        importAsset(.image, from: source) { result in
-            switch result {
-            case .success(let assetFile):
-                guard let assetFile: AMAssetFile = assetFile else {
-                    completion(.success(nil))
-                    return
+        DispatchQueue.main.async {
+            self.importAsset(.image, from: source) { result in
+                switch result {
+                case .success(let assetFile):
+                    guard let assetFile: AMAssetFile = assetFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    guard let assetImageFile: AMAssetImageFile = assetFile as? AMAssetImageFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    completion(.success(assetImageFile))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                guard let assetImageFile: AMAssetImageFile = assetFile as? AMAssetImageFile else {
-                    completion(.success(nil))
-                    return
-                }
-                completion(.success(assetImageFile))
-            case .failure(let error):
-                completion(.failure(error))
             }
         }
     }
@@ -320,20 +322,22 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
-        importAssets(.image, from: source) { result in
-            switch result {
-            case .success(let assetFiles):
-                let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
-                    if let imageFile = file as? AMAssetImageFile {
-                        return imageFile
-                    } else if let rawImageFile = file as? AMAssetRawImageFile {
-                        return rawImageFile
-                    }
-                    return nil
-                })
-                completion(.success(assetFiles))
-            case .failure(let error):
-                completion(.failure(error))
+        DispatchQueue.main.async {
+            self.importAssets(.image, from: source) { result in
+                switch result {
+                case .success(let assetFiles):
+                    let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
+                        if let imageFile = file as? AMAssetImageFile {
+                            return imageFile
+                        } else if let rawImageFile = file as? AMAssetRawImageFile {
+                            return rawImageFile
+                        }
+                        return nil
+                    })
+                    completion(.success(assetFiles))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
             }
         }
     }
