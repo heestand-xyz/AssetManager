@@ -58,15 +58,15 @@ struct AMAssetView<Content: View>: View {
                     assetManager.photosSelectedCallback?([])
                 }
             })
-//#if os(iOS) || os(visionOS)
-//            .sheet(isPresented: $assetManager.showShare, onDismiss: {
-//                assetManager.shareItem = nil
-//            }) {
-//                if let items: [Any] = assetManager.shareItems {
-//                    ShareView(items: items)
-//                }
-//            }
-//#endif
+#if os(iOS) || os(visionOS)
+            .sheet(isPresented: $assetManager.showShare, onDismiss: {
+                assetManager.shareItems = nil
+            }) {
+                if let items: [Any] = assetManager.shareItems {
+                    ShareView(items: items)
+                }
+            }
+#endif
     }
 }
 
