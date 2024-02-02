@@ -35,23 +35,27 @@ extension AMAssetManager {
                   title: String? = nil,
                   name: String,
                   completion: ((Result<URL?, Error>) -> ())? = nil) {
-        let savePanel = NSSavePanel()
-        savePanel.title = title ?? "Save File"
-        savePanel.canCreateDirectories = true
-        savePanel.nameFieldStringValue = name
         
-        savePanel.begin { response in
+        DispatchQueue.main.async {
             
-            guard response != .cancel, let url: URL = savePanel.url else {
-                completion?(.success(nil))
-                return
-            }
+            let savePanel = NSSavePanel()
+            savePanel.title = title ?? "Save File"
+            savePanel.canCreateDirectories = true
+            savePanel.nameFieldStringValue = name
             
-            do {
-                try data.write(to: url)
-                completion?(.success(url))
-            } catch {
-                completion?(.failure(error))
+            savePanel.begin { response in
+                
+                guard response != .cancel, let url: URL = savePanel.url else {
+                    completion?(.success(nil))
+                    return
+                }
+                
+                do {
+                    try data.write(to: url)
+                    completion?(.success(url))
+                } catch {
+                    completion?(.failure(error))
+                }
             }
         }
     }
