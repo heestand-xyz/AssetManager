@@ -470,36 +470,37 @@ extension AMAssetManager {
         #endif
     }
     
-//    public func saveImageToFiles(_ image: AMImage, as format: ImageAssetFormat = .png) async throws {
-//        let _: Void = try await withCheckedThrowingContinuation { continuation in
-//            saveImageToFiles(image, as: format) { error in
-//                if let error = error {
-//                    continuation.resume(throwing: error)
-//                    return
-//                }
-//                continuation.resume()
-//            }
-//        }
-//    }
-    
+    @discardableResult
     public func saveImageToFiles(
         _ image: AMImage,
         name: String,
         as format: ImageAssetFormat = .png
-//        completion: @escaping (Error?) -> ()
+    ) async throws -> URL? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveImageToFiles(image, name: name, as: format) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveImageToFiles(
+        _ image: AMImage,
+        name: String,
+        as format: ImageAssetFormat = .png,
+        completion: @escaping (Result<URL?, Error>) -> ()
     ) {
                 
         let data: Data
         switch format {
         case .png:
             guard let pngData = image.pngData() else {
-//                completion(AssetError.badImageData)
+                completion(.failure(AssetError.badImageData))
                 return
             }
             data = pngData
         case .jpg(let compressionQuality):
             guard let jpgData = image.jpegData(compressionQuality: compressionQuality) else {
-//                completion(AssetError.badImageData)
+                completion(.failure(AssetError.badImageData))
                 return
             }
             data = jpgData
@@ -507,7 +508,7 @@ extension AMAssetManager {
         
         #if os(macOS)
         saveFile(data: data, title: "Save Image", name: "\(name).\(format.filenameExtension)") { error in
-//            completion(error)
+            completion(error)
         }
         #else
         
@@ -525,15 +526,15 @@ extension AMAssetManager {
             try data.write(to: url)
 //            url.stopAccessingSecurityScopedResource()
             
-            saveToFiles(url: url)/* { error in
+            saveToFiles(url: url) { result in
                 
                 try? FileManager.default.removeItem(at: url)
                 
-                completion(error)
-            }*/
+                completion(result)
+            }
         } catch {
             print("Asset Manager - Temporary Image File Save Failed:", error)
-//            completion(error)
+            completion(.failure(error))
         }
         #endif
     }
