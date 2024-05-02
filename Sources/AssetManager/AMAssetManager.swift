@@ -579,7 +579,7 @@ extension AMAssetManager {
         
         #if os(macOS)
         let items: [(data: Data, name: String)] = data.enumerated().map { index, data in
-            (data: data, name: "\(name) \(index + 1).\(format.filenameExtension)")
+            (data: data, name: "\(name) (\(index + 1)).\(format.filenameExtension)")
         }
         saveFilesInFolder(items, title: "Save Images") { result in
             completion(result)
@@ -596,7 +596,7 @@ extension AMAssetManager {
             var urls: [URL] = []
             for (index, data) in data.enumerated() {
                 let url: URL = folderURL
-                    .appendingPathComponent("\(name) \(index + 1).\(format.filenameExtension)")
+                    .appendingPathComponent("\(name) (\(index + 1)).\(format.filenameExtension)")
 //                _ = url.startAccessingSecurityScopedResource()
                 try data.write(to: url)
 //                url.stopAccessingSecurityScopedResource()
