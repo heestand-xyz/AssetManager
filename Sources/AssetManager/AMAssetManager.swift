@@ -507,8 +507,8 @@ extension AMAssetManager {
         }
         
         #if os(macOS)
-        saveFile(data: data, title: "Save Image", name: "\(name).\(format.filenameExtension)") { error in
-            completion(error)
+        saveFile(data: data, title: "Save Image", name: "\(name).\(format.filenameExtension)") { result in
+            completion(result)
         }
         #else
         
@@ -534,6 +534,85 @@ extension AMAssetManager {
             }
         } catch {
             print("Asset Manager - Temporary Image File Save Failed:", error)
+            completion(.failure(error))
+        }
+        #endif
+    }
+    
+    @discardableResult
+    public func saveImagesToFiles(
+        _ images: [AMImage],
+        name: String,
+        as format: ImageAssetFormat = .png
+    ) async throws -> [URL]? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveImagesToFiles(images, name: name, as: format) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveImagesToFiles(
+        _ images: [AMImage],
+        name: String,
+        as format: ImageAssetFormat = .png,
+        completion: @escaping (Result<[URL]?, Error>) -> ()
+    ) {
+                
+        var data: [Data] = []
+        for image in images {
+            switch format {
+            case .png:
+                guard let pngData = image.pngData() else {
+                    completion(.failure(AssetError.badImageData))
+                    return
+                }
+                data.append(pngData)
+            case .jpg(let compressionQuality):
+                guard let jpgData = image.jpegData(compressionQuality: compressionQuality) else {
+                    completion(.failure(AssetError.badImageData))
+                    return
+                }
+                data.append(jpgData)
+            }
+        }
+        
+        #if os(macOS)
+        let items: [(data: Data, name: String)] = data.enumerated().map { index, data in
+            (data: data, name: "\(name) \(index + 1).\(format.filenameExtension)")
+        }
+        saveFilesInFolder(items, title: "Save Images") { result in
+            completion(result)
+        }
+        #else
+        
+        do {
+            
+            let folderURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent(UUID().uuidString)
+            
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
+            
+            var urls: [URL] = []
+            for (index, data) in data.enumerated() {
+                let url: URL = folderURL
+                    .appendingPathComponent("\(name) \(index + 1).\(format.filenameExtension)")
+//                _ = url.startAccessingSecurityScopedResource()
+                try data.write(to: url)
+//                url.stopAccessingSecurityScopedResource()
+                urls.append(url)
+            }
+            
+            saveToFiles(urls: urls) { result in
+                
+                for url in urls {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                
+                completion(result)
+            }
+        } catch {
+            print("Asset Manager - Temporary Images File Save Failed:", error)
             completion(.failure(error))
         }
         #endif
