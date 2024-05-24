@@ -36,7 +36,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
             case .image:
                 return [.image]
             case .video:
-                return [.video]
+                return [.movie]
             case .audio:
                 return [.audio]
             case .media:
@@ -63,7 +63,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return .videos
             case .media:
                 return .any(of: [.images, .videos])
-            case .file, .lut:
+            case .file, .lut, .audio:
                 return nil
             }
         }
@@ -635,6 +635,7 @@ extension AMAssetManager {
 //        }
 //    }
     
+    @discardableResult
     public func saveToFiles(
         url: URL,
         title: String? = nil,
@@ -889,6 +890,8 @@ extension AMAssetManager {
                     }
                 case .lut:
                     break
+                case .audio:
+                    break
                 }
             } else {
                 openFile(title: "Open File", allowedFileTypes: nil) { result in
@@ -1032,6 +1035,8 @@ extension AMAssetManager {
                     }
                 case .lut:
                     break
+                case .audio:
+                    break
                 }
             } else {
                 openFiles(title: "Open Files", allowedFileTypes: nil) { result in
@@ -1162,9 +1167,9 @@ extension AMAssetManager {
                 
                 let provider = providers.removeFirst()
                 
-                if provider.hasItemConformingToTypeIdentifier(UTType.video.identifier) {
+                if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                     
-                    provider.loadFileRepresentation(forTypeIdentifier: UTType.video.identifier) { url, error in
+                    provider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
                         
                         guard error == nil,
                               let url: URL = url else {
