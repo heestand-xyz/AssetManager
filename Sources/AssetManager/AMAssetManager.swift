@@ -26,6 +26,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         
         case image
         case video
+        case audio
         case media
         case lut
         case file(extension: String)
@@ -35,9 +36,11 @@ public final class AMAssetManager: NSObject, ObservableObject {
             case .image:
                 return [.image]
             case .video:
-                return [.movie]
+                return [.video]
+            case .audio:
+                return [.audio]
             case .media:
-                return AssetType.image.types + AssetType.video.types
+                return Self.image.types + Self.video.types + Self.audio.types
             case .lut:
                 var types: [UTType] = []
                 if let cube = UTType(filenameExtension: "cube") {
