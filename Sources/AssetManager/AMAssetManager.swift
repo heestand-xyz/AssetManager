@@ -359,7 +359,7 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.video, from: source) { result in
+        importAsset(.video, from: source, autoConvertToImageFile: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -401,7 +401,7 @@ extension AMAssetManager {
         filenameExtension: String,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.file(extension: filenameExtension), from: .files) { result in
+        importAsset(.file(extension: filenameExtension), from: .files, autoConvertToImageFile: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -430,7 +430,7 @@ extension AMAssetManager {
     public func importAnyFile(
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(nil, from: .files) { result in
+        importAsset(nil, from: .files, autoConvertToImageFile: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -844,6 +844,7 @@ extension AMAssetManager {
     private func importAsset(
         _ type: AssetType?,
         from source: AssetSource,
+        autoConvertToImageFile: Bool = true,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
@@ -852,6 +853,7 @@ extension AMAssetManager {
             if let type = type {
                 switch type {
                 case .image:
+                    // TODO: Respect `!autoConvertToImageFile`
                     openImage { result in
                         switch result {
                         case .success(let assetImageFile):
@@ -870,6 +872,7 @@ extension AMAssetManager {
                         }
                     }
                 case .media:
+                    // TODO: Respect `!autoConvertToImageFile`
                     openMedia { result in
                         switch result {
                         case .success(let assetFile):
@@ -918,7 +921,7 @@ extension AMAssetManager {
                 let name: String = url.deletingPathExtension().lastPathComponent
                 guard url.startAccessingSecurityScopedResource() else { return }
                 defer { url.stopAccessingSecurityScopedResource() }
-                if AssetType.isImage(url: url) {
+                if autoConvertToImageFile, AssetType.isImage(url: url) {
                     guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                         completion(.failure(AssetError.badImageData))
                         return
