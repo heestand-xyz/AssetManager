@@ -28,9 +28,13 @@ extension AMAssetManager {
         }
     }
     
-    func openImage(completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()) {
-        openFile(title: "Import Image",
-                 allowedFileTypes: AMAssetManager.AssetType.image.types) { result in
+    func openImage(
+        completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
+    ) {
+        openFile(
+            title: "Import Image",
+            allowedFileTypes: AMAssetManager.AssetType.image.types
+        ) { result in
             switch result {
             case .success(let assetURLFile):
                 guard let assetURLFile: AMAssetURLFile = assetURLFile else {
@@ -54,14 +58,23 @@ extension AMAssetManager {
         }
     }
 
-    func openImagesAsURLs(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
-        openFiles(title: "Import Images",
-                  allowedFileTypes: AMAssetManager.AssetType.image.types, completion: completion)
+    func openImagesAsURLs(
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        openFiles(
+            title: "Import Images",
+            allowedFileTypes: AMAssetManager.AssetType.image.types,
+            completion: completion
+        )
     }
     
-    func openImages(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
-        openFiles(title: "Import Images",
-                  allowedFileTypes: AMAssetManager.AssetType.image.types) { result in
+    func openImages(
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        openFiles(
+            title: "Import Images",
+            allowedFileTypes: AMAssetManager.AssetType.image.types
+        ) { result in
             switch result {
             case .success(let urlFiles):
                 var imageFiles: [AMAssetFile] = []
@@ -79,24 +92,38 @@ extension AMAssetManager {
         }
     }
     
-    func openVideo(completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
-        openFile(title: "Import Video",
-                 allowedFileTypes: AMAssetManager.AssetType.video.types,
-                 completion: completion)
+    func openVideo(
+        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+    ) {
+        openFile(
+            title: "Import Video",
+            allowedFileTypes: AMAssetManager.AssetType.video.types,
+            completion: completion
+        )
     }
     
-    func openVideos(completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
-        openFiles(title: "Import Videos",
-                  allowedFileTypes: AMAssetManager.AssetType.video.types, completion: completion)
+    func openVideos(
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        openFiles(
+            title: "Import Videos",
+            allowedFileTypes: AMAssetManager.AssetType.video.types,
+            completion: completion
+        )
     }
     
-    func openMedia(completion: @escaping (Result<AMAssetFile?, Error>) -> ()) {
-        openFile(title: "Import Media",
-                 allowedFileTypes: AMAssetManager.AssetType.media.types) { result in
+    func openMedia(
+        autoImageConvert: Bool,
+        completion: @escaping (Result<AMAssetFile?, Error>) -> ()
+    ) {
+        openFile(
+            title: "Import Media",
+            allowedFileTypes: AMAssetManager.AssetType.media.types
+        ) { result in
             switch result {
             case .success(let urlFile):
                 if let urlFile {
-                    if AssetType.isImage(url: urlFile.url) {
+                    if autoImageConvert, AssetType.isImage(url: urlFile.url) {
                         guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
                             completion(.failure(AssetError.badImageData))
                             return
@@ -114,13 +141,18 @@ extension AMAssetManager {
         }
     }
     
-    func openMedia(completion: @escaping (Result<[AMAssetFile], Error>) -> ()) {
-        openFiles(title: "Import Media",
-                  allowedFileTypes: AMAssetManager.AssetType.media.types) { result in
+    func openMedia(
+        autoImageConvert: Bool,
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        openFiles(
+            title: "Import Media",
+            allowedFileTypes: AMAssetManager.AssetType.media.types
+        ) { result in
             switch result {
             case .success(let urlFiles):
                 let files: [AMAssetFile] = urlFiles.compactMap { urlFile in
-                    if AssetType.isImage(url: urlFile.url) {
+                    if autoImageConvert, AssetType.isImage(url: urlFile.url) {
                         guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
                             return nil
                         }
@@ -135,9 +167,11 @@ extension AMAssetManager {
         }
     }
     
-    func openFile(title: String,
-                  allowedFileTypes: [UTType]?,
-                  completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()) {
+    func openFile(
+        title: String,
+        allowedFileTypes: [UTType]?,
+        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+    ) {
         
         let openPanel = NSOpenPanel()
         
@@ -167,9 +201,11 @@ extension AMAssetManager {
         }
     }
     
-    func openFiles(title: String,
-                   allowedFileTypes: [UTType]?,
-                   completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()) {
+    func openFiles(
+        title: String,
+        allowedFileTypes: [UTType]?,
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
         
         let openPanel = NSOpenPanel()
         
@@ -200,8 +236,10 @@ extension AMAssetManager {
         }
     }
     
-    func openFolder(title: String,
-                    completion: @escaping (Result<URL?, Error>) -> ()) {
+    func openFolder(
+        title: String,
+        completion: @escaping (Result<URL?, Error>) -> ()
+    ) {
         
         let openPanel = NSOpenPanel()
         

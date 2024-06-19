@@ -209,6 +209,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
     var photosSelectedCallback: (([Any]) -> ())?
 }
 
+// MARK: - Share
+
 extension AMAssetManager {
     
     #if os(iOS) || os(visionOS)
@@ -234,41 +236,60 @@ extension AMAssetManager {
     }
     
     #endif
+}
+
+// MARK: - Import
+
+extension AMAssetManager {
     
+    // MARK: Media
+    
+    /// Auto converted to an image when `source` is not `.files`
     public func importOneMedia(
-        from source: AssetSource
+        from source: AssetSource,
+        autoImageConvert: Bool? = nil
     ) async throws -> AMAssetFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importOneMedia(from: source) { result in
+            importOneMedia(from: source, autoImageConvert: autoImageConvert) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
-    public func importMultipleMedia(
-        from source: AssetSource
-    ) async throws -> [AMAssetFile] {
-        try await withCheckedThrowingContinuation { continuation in
-            importMultipleMedia(from: source) { result in
-                continuation.resume(with: result)
-            }
-        }
-    }
-    
+    /// Auto converted to an image when `source` is not `.files`
     public func importOneMedia(
         from source: AssetSource,
+        autoImageConvert: Bool? = nil,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
-        importAsset(.media, from: source, completion: completion)
+        let autoImageConvert: Bool = source != .files
+        importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
+    /// Auto converted to an image when `source` is not `.files`
     public func importMultipleMedia(
         from source: AssetSource,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
-    ) {
-        importAssets(.media, from: source, completion: completion)
+        autoImageConvert: Bool? = nil
+    ) async throws -> [AMAssetFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importMultipleMedia(from: source, autoImageConvert: autoImageConvert) { result in
+                continuation.resume(with: result)
+            }
+        }
     }
     
+    /// Auto converted to an image when `source` is not `.files`
+    public func importMultipleMedia(
+        from source: AssetSource,
+        autoImageConvert: Bool? = nil,
+        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        let autoImageConvert: Bool = source != .files
+        importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+    }
+    
+    // MARK: Images
+
     public func importImage(
         from source: AssetSource
     ) async throws -> AMAssetImageFile? {
@@ -285,8 +306,9 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
+        let autoImageConvert: Bool = source != .files
         DispatchQueue.main.async {
-            self.importAsset(.image, from: source) { result in
+            self.importAsset(.image, from: source, autoImageConvert: true) { result in
                 switch result {
                 case .success(let assetFile):
                     guard let assetFile: AMAssetFile = assetFile else {
@@ -326,7 +348,7 @@ extension AMAssetManager {
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         DispatchQueue.main.async {
-            self.importAssets(.image, from: source) { result in
+            self.importAssets(.image, from: source, autoImageConvert: true) { result in
                 switch result {
                 case .success(let assetFiles):
                     let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
@@ -345,6 +367,8 @@ extension AMAssetManager {
         }
     }
     
+    // MARK: Video
+
     public func importVideo(
         from source: AssetSource
     ) async throws -> AMAssetURLFile? {
@@ -359,7 +383,7 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.video, from: source, autoConvertToImageFile: false) { result in
+        importAsset(.video, from: source, autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -387,6 +411,8 @@ extension AMAssetManager {
     
     #endif
     
+    // MARK: Files
+
     public func importFile(
         filenameExtension: String
     ) async throws -> AMAssetURLFile? {
@@ -401,7 +427,7 @@ extension AMAssetManager {
         filenameExtension: String,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.file(extension: filenameExtension), from: .files, autoConvertToImageFile: false) { result in
+        importAsset(.file(extension: filenameExtension), from: .files, autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -430,7 +456,7 @@ extension AMAssetManager {
     public func importAnyFile(
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(nil, from: .files, autoConvertToImageFile: false) { result in
+        importAsset(nil, from: .files, autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -447,6 +473,11 @@ extension AMAssetManager {
             }
         }
     }
+}
+
+// MARK: - Select Folder
+
+extension AMAssetManager {
     
     public func selectFolder() async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
@@ -472,6 +503,11 @@ extension AMAssetManager {
         showOpenFolderPicker = true
         #endif
     }
+}
+
+// MARK: - Save
+
+extension AMAssetManager {
     
     @discardableResult
     public func saveImageToFiles(
@@ -839,12 +875,14 @@ extension AMAssetManager {
     #endif
 }
 
+// MARK: - Import Assets
+
 extension AMAssetManager {
     
     private func importAsset(
         _ type: AssetType?,
         from source: AssetSource,
-        autoConvertToImageFile: Bool = true,
+        autoImageConvert: Bool,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
@@ -853,7 +891,7 @@ extension AMAssetManager {
             if let type = type {
                 switch type {
                 case .image:
-                    // TODO: Respect `!autoConvertToImageFile`
+                    // TODO: Respect `!autoImageConvert`
                     openImage { result in
                         switch result {
                         case .success(let assetImageFile):
@@ -872,8 +910,7 @@ extension AMAssetManager {
                         }
                     }
                 case .media:
-                    // TODO: Respect `!autoConvertToImageFile`
-                    openMedia { result in
+                    openMedia(autoImageConvert: autoImageConvert) { result in
                         switch result {
                         case .success(let assetFile):
                             completion(.success(assetFile))
@@ -921,7 +958,7 @@ extension AMAssetManager {
                 let name: String = url.deletingPathExtension().lastPathComponent
                 guard url.startAccessingSecurityScopedResource() else { return }
                 defer { url.stopAccessingSecurityScopedResource() }
-                if autoConvertToImageFile, AssetType.isImage(url: url) {
+                if autoImageConvert, AssetType.isImage(url: url) {
                     guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                         completion(.failure(AssetError.badImageData))
                         return
@@ -954,7 +991,7 @@ extension AMAssetManager {
                     completion(.failure(AssetError.badPhotosObject))
                     return
                 }
-                if AssetType.isImage(url: url) {
+                if autoImageConvert, AssetType.isImage(url: url) {
                     guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                         completion(.failure(AssetError.badImageData))
                         return
@@ -992,6 +1029,7 @@ extension AMAssetManager {
     private func importAssets(
         _ type: AssetType?,
         from source: AssetSource,
+        autoImageConvert: Bool,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         switch source {
@@ -1018,7 +1056,7 @@ extension AMAssetManager {
                         }
                     }
                 case .media:
-                    openMedia { result in
+                    openMedia(autoImageConvert: autoImageConvert) { result in
                         switch result {
                         case .success(let assetFiles):
                             completion(.success(assetFiles))
@@ -1066,7 +1104,7 @@ extension AMAssetManager {
                             throw AssetError.badURLAccess
                         }
                         defer { url.stopAccessingSecurityScopedResource() }
-                        if AssetType.isImage(url: url) {
+                        if autoImageConvert, AssetType.isImage(url: url) {
                             guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                                 throw AssetError.badImageData
                             }
@@ -1092,13 +1130,13 @@ extension AMAssetManager {
                 self?.photosSelectedCallback = nil
                 do {
                     let files: [AMAssetFile] = try objects.map { object in
-                        if let image = object as? AMImage {
+                        if autoImageConvert, let image = object as? AMImage {
                             return AMAssetImageFile(name: nil, image: image)
                         }
                         guard let url: URL = object as? URL else {
                             throw AssetError.badPhotosObject
                         }
-                        if AssetType.isImage(url: url) {
+                        if autoImageConvert, AssetType.isImage(url: url) {
                             guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
                                 throw AssetError.badImageData
                             }
@@ -1117,6 +1155,8 @@ extension AMAssetManager {
         }
     }
 }
+
+// MARK: - Drop
 
 extension AMAssetManager {
     
@@ -1340,6 +1380,8 @@ extension AMAssetManager {
         next()
     }
 }
+
+// MARK: - Data
 
 #if os(macOS)
 
