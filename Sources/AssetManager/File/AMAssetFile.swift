@@ -22,6 +22,16 @@ public protocol AMAssetFile {
     var name: String? { get }
 }
 
+extension AMAssetFile {
+    /// Full file name if a url exists, with fallback to name.
+    public var fullName: String? {
+        if let urlFile = self as? AMAssetURLFile {
+            return urlFile.url.lastPathComponent
+        }
+        return name
+    }
+}
+
 public struct AMAssetURLFile: AMAssetFile {
     public let name: String?
     public let url: URL
