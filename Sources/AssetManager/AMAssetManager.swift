@@ -18,8 +18,16 @@ public final class AMAssetManager: NSObject, ObservableObject {
     
     public enum AssetSource {
         case photos
-        case files
+        case files(directory: URL?)
         case camera
+        public static let files: AssetSource = .files(directory: nil)
+        var isFiles: Bool {
+            if case .files = self {
+                true
+            } else {
+                false
+            }
+        }
     }
     
     public enum AssetType {
@@ -177,13 +185,16 @@ public final class AMAssetManager: NSObject, ObservableObject {
     @Published var showOpenFilesPicker: Bool = false
     var filesTypes: [UTType]?
     var filesHasMultiSelect: Bool?
+    var filesDirectoryURL: URL?
     var filesSelectedCallback: (([URL]) -> ())?
     
     @Published var showOpenFolderPicker: Bool = false
+    var folderDirectoryURL: URL?
     var folderSelectedCallback: ((URL?) -> ())?
     
     @Published var showSaveFilePicker: Bool = false
     var saveFileAsCopy: Bool = true
+    var saveDirectoryURL: URL?
     var fileUrls: [URL]?
     var saveFileCompletion: (([URL]?) -> ())?
     
@@ -262,7 +273,7 @@ extension AMAssetManager {
         autoImageConvert: Bool? = nil,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
-        let autoImageConvert: Bool = source != .files
+        let autoImageConvert: Bool = !source.isFiles
         importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
@@ -284,7 +295,7 @@ extension AMAssetManager {
         autoImageConvert: Bool? = nil,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
-        let autoImageConvert: Bool = source != .files
+        let autoImageConvert: Bool = !source.isFiles
         importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
@@ -306,7 +317,7 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
-        let autoImageConvert: Bool = source != .files
+        let autoImageConvert: Bool = !source.isFiles
         DispatchQueue.main.async {
             self.importAsset(.image, from: source, autoImageConvert: true) { result in
                 switch result {
@@ -330,15 +341,17 @@ extension AMAssetManager {
     #if os(macOS)
     
     public func importImages(
+        directory: URL? = nil,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
-        openImages(completion: completion)
+        openImages(directoryURL: directory, completion: completion)
     }
     
     public func importImagesAsURLs(
+        directory: URL? = nil,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        openImagesAsURLs(completion: completion)
+        openImagesAsURLs(directoryURL: directory, completion: completion)
     }
     
     #endif
@@ -404,9 +417,10 @@ extension AMAssetManager {
     #if os(macOS)
     
     public func importVideos(
+        directory: URL? = nil,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        openVideos(completion: completion)
+        openVideos(directoryURL: directory, completion: completion)
     }
     
     #endif
@@ -414,10 +428,11 @@ extension AMAssetManager {
     // MARK: Files
 
     public func importFile(
-        filenameExtension: String
+        filenameExtension: String,
+        directory: URL? = nil
     ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importFile(filenameExtension: filenameExtension) { result in
+            importFile(filenameExtension: filenameExtension, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
@@ -425,9 +440,10 @@ extension AMAssetManager {
     
     public func importFile(
         filenameExtension: String,
+        directory: URL? = nil,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.file(extension: filenameExtension), from: .files, autoImageConvert: false) { result in
+        importAsset(.file(extension: filenameExtension), from: .files(directory: directory), autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -445,18 +461,21 @@ extension AMAssetManager {
         }
     }
     
-    public func importAnyFile() async throws -> AMAssetURLFile? {
+    public func importAnyFile(
+        directory: URL? = nil
+    ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importAnyFile() { result in
+            importAnyFile(directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importAnyFile(
+        directory: URL? = nil,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(nil, from: .files, autoImageConvert: false) { result in
+        importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -479,10 +498,12 @@ extension AMAssetManager {
 
 extension AMAssetManager {
     
-    public func selectFolder() async throws -> URL? {
+    public func selectFolder(
+        directory: URL? = nil
+    ) async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.main.async { [weak self] in
-                self?.selectFolder() { result in
+                self?.selectFolder(directory: directory) { result in
                     continuation.resume(with: result)
                 }
             }
@@ -490,16 +511,19 @@ extension AMAssetManager {
     }
     
     public func selectFolder(
+        directory: URL? = nil,
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
         #if os(macOS)
-        openFolder(title: "Select Folder", completion: completion)
+        openFolder(title: "Folder", directoryURL: directory, completion: completion)
         #else
         folderSelectedCallback = { [weak self] url in
             self?.folderSelectedCallback = nil
             self?.showOpenFolderPicker = false
+            self?.folderDirectoryURL = nil
             completion(.success(url))
         }
+        folderDirectoryURL = directory
         showOpenFolderPicker = true
         #endif
     }
@@ -686,6 +710,7 @@ extension AMAssetManager {
     
     public func saveToFiles(
         url: URL,
+        directory: URL? = nil,
         title: String? = nil,
         asCopy: Bool = true,
         completion: ((Result<URL?, Error>) -> ())? = nil
@@ -694,8 +719,10 @@ extension AMAssetManager {
         fileUrls = [url]
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
+        saveDirectoryURL = directory
         saveFileCompletion = { [weak self] urls in
             completion?(.success(urls?.first))
+            self?.saveDirectoryURL = nil
             self?.saveFileCompletion = nil
         }
         #elseif os(macOS)
@@ -717,6 +744,7 @@ extension AMAssetManager {
     
     public func saveToFiles(
         urls: [URL],
+        directory: URL? = nil,
         title: String? = nil,
         asCopy: Bool = true,
         completion: ((Result<[URL]?, Error>) -> ())? = nil
@@ -725,9 +753,11 @@ extension AMAssetManager {
         fileUrls = urls
         showSaveFilePicker = true
         saveFileAsCopy = asCopy
+        saveDirectoryURL = directory
         saveFileCompletion = { [weak self] urls in
             completion?(.success(urls))
             self?.saveFileCompletion = nil
+            self?.saveDirectoryURL = nil
         }
         #elseif os(macOS)
         do {
@@ -886,13 +916,15 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
-        case .files:
+        case .files(let directoryURL):
             #if os(macOS)
             if let type = type {
                 switch type {
                 case .image:
                     // TODO: Respect `!autoImageConvert`
-                    openImage { result in
+                    openImage(
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetImageFile):
                             completion(.success(assetImageFile))
@@ -901,7 +933,9 @@ extension AMAssetManager {
                         }
                     }
                 case .video:
-                    openVideo { result in
+                    openVideo(
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetURLFile):
                             completion(.success(assetURLFile))
@@ -910,7 +944,10 @@ extension AMAssetManager {
                         }
                     }
                 case .media:
-                    openMedia(autoImageConvert: autoImageConvert) { result in
+                    openMedia(
+                        autoImageConvert: autoImageConvert,
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetFile):
                             completion(.success(assetFile))
@@ -920,7 +957,11 @@ extension AMAssetManager {
                     }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
-                    openFile(title: "Open \(fileExtension.uppercased()) File", allowedFileTypes: [fileType]) { result in
+                    openFile(
+                        title: "Open \(fileExtension.uppercased()) File",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: [fileType]
+                    ) { result in
                         switch result {
                         case .success(let assetURLFile):
                             completion(.success(assetURLFile))
@@ -934,7 +975,11 @@ extension AMAssetManager {
                     break
                 }
             } else {
-                openFile(title: "Open File", allowedFileTypes: nil) { result in
+                openFile(
+                    title: "Open File",
+                    directoryURL: directoryURL,
+                    allowedFileTypes: nil
+                ) { result in
                     switch result {
                     case .success(let assetURLFile):
                         completion(.success(assetURLFile))
@@ -946,9 +991,11 @@ extension AMAssetManager {
             #elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = false
+            filesDirectoryURL = directoryURL
             filesSelectedCallback = { [weak self] urls in
                 self?.filesTypes = nil
                 self?.filesHasMultiSelect = nil
+                self?.filesDirectoryURL = nil
                 self?.showOpenFilesPicker = false
                 self?.filesSelectedCallback = nil
                 guard let url: URL = urls.first else {
@@ -1033,12 +1080,14 @@ extension AMAssetManager {
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         switch source {
-        case .files:
+        case .files(let directoryURL):
             #if os(macOS)
             if let type = type {
                 switch type {
                 case .image:
-                    openImages { result in
+                    openImages(
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetImageFiles):
                             completion(.success(assetImageFiles))
@@ -1047,7 +1096,9 @@ extension AMAssetManager {
                         }
                     }
                 case .video:
-                    openVideos { result in
+                    openVideos(
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetURLFiles):
                             completion(.success(assetURLFiles))
@@ -1056,7 +1107,10 @@ extension AMAssetManager {
                         }
                     }
                 case .media:
-                    openMedia(autoImageConvert: autoImageConvert) { result in
+                    openMedia(
+                        autoImageConvert: autoImageConvert,
+                        directoryURL: directoryURL
+                    ) { result in
                         switch result {
                         case .success(let assetFiles):
                             completion(.success(assetFiles))
@@ -1066,7 +1120,11 @@ extension AMAssetManager {
                     }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
-                    openFiles(title: "Open \(fileExtension.uppercased()) Files", allowedFileTypes: [fileType]) { result in
+                    openFiles(
+                        title: "Open \(fileExtension.uppercased()) Files",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: [fileType]
+                    ) { result in
                         switch result {
                         case .success(let assetURLFiles):
                             completion(.success(assetURLFiles))
@@ -1080,7 +1138,11 @@ extension AMAssetManager {
                     break
                 }
             } else {
-                openFiles(title: "Open Files", allowedFileTypes: nil) { result in
+                openFiles(
+                    title: "Open Files",
+                    directoryURL: directoryURL,
+                    allowedFileTypes: nil
+                ) { result in
                     switch result {
                     case .success(let assetURLFiles):
                         completion(.success(assetURLFiles))
@@ -1092,9 +1154,11 @@ extension AMAssetManager {
             #elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = true
+            filesDirectoryURL = directoryURL
             filesSelectedCallback = { [weak self] urls in
                 self?.filesTypes = nil
                 self?.filesHasMultiSelect = nil
+                self?.filesDirectoryURL = nil
                 self?.showOpenFilesPicker = false
                 self?.filesSelectedCallback = nil
                 do {

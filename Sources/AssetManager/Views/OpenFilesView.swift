@@ -14,6 +14,7 @@ import UniformTypeIdentifiers
 struct OpenFilesView: UIViewControllerRepresentable {
     
     let types: [UTType]
+    let directoryURL: URL?
     let multiSelect: Bool
     let pickedFiles: ([URL]) -> ()
     let cancelled: () -> ()
@@ -22,6 +23,7 @@ struct OpenFilesView: UIViewControllerRepresentable {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: types)
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = multiSelect
+        picker.directoryURL = directoryURL
         context.coordinator.pickedFiles = { url in
             DispatchQueue.main.async {
                 pickedFiles(url)

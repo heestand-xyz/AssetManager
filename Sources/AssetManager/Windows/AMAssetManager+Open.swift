@@ -29,10 +29,12 @@ extension AMAssetManager {
     }
     
     func openImage(
+        directoryURL: URL?,
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
         openFile(
-            title: "Import Image",
+            title: "Image",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.image.types
         ) { result in
             switch result {
@@ -59,20 +61,24 @@ extension AMAssetManager {
     }
 
     func openImagesAsURLs(
+        directoryURL: URL?,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openFiles(
-            title: "Import Images",
+            title: "Images",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.image.types,
             completion: completion
         )
     }
     
     func openImages(
+        directoryURL: URL?,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
-            title: "Import Images",
+            title: "Images",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.image.types
         ) { result in
             switch result {
@@ -93,20 +99,24 @@ extension AMAssetManager {
     }
     
     func openVideo(
+        directoryURL: URL?,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         openFile(
-            title: "Import Video",
+            title: "Video",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.video.types,
             completion: completion
         )
     }
     
     func openVideos(
+        directoryURL: URL?,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openFiles(
-            title: "Import Videos",
+            title: "Videos",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.video.types,
             completion: completion
         )
@@ -114,10 +124,12 @@ extension AMAssetManager {
     
     func openMedia(
         autoImageConvert: Bool,
+        directoryURL: URL?,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         openFile(
-            title: "Import Media",
+            title: "Media",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.media.types
         ) { result in
             switch result {
@@ -143,10 +155,12 @@ extension AMAssetManager {
     
     func openMedia(
         autoImageConvert: Bool,
+        directoryURL: URL?,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
-            title: "Import Media",
+            title: "Media",
+            directoryURL: directoryURL,
             allowedFileTypes: AMAssetManager.AssetType.media.types
         ) { result in
             switch result {
@@ -169,6 +183,7 @@ extension AMAssetManager {
     
     func openFile(
         title: String,
+        directoryURL: URL?,
         allowedFileTypes: [UTType]?,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
@@ -176,6 +191,7 @@ extension AMAssetManager {
         let openPanel = NSOpenPanel()
         
         openPanel.title = title
+        openPanel.directoryURL = directoryURL
         openPanel.allowsMultipleSelection = false
         openPanel.canChooseDirectories = false
         openPanel.canCreateDirectories = true
@@ -203,6 +219,7 @@ extension AMAssetManager {
     
     func openFiles(
         title: String,
+        directoryURL: URL?,
         allowedFileTypes: [UTType]?,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
@@ -210,6 +227,7 @@ extension AMAssetManager {
         let openPanel = NSOpenPanel()
         
         openPanel.title = title
+        openPanel.directoryURL = directoryURL
         openPanel.allowsMultipleSelection = true
         openPanel.canChooseDirectories = false
         openPanel.canCreateDirectories = true
@@ -238,12 +256,14 @@ extension AMAssetManager {
     
     func openFolder(
         title: String,
+        directoryURL: URL?,
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
         
         let openPanel = NSOpenPanel()
         
         openPanel.title = title
+        openPanel.directoryURL = directoryURL
         openPanel.allowsMultipleSelection = false
         openPanel.canChooseDirectories = true
         openPanel.canCreateDirectories = true

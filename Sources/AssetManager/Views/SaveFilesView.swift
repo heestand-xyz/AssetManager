@@ -14,12 +14,14 @@ import UniformTypeIdentifiers
 struct SaveFilesView: UIViewControllerRepresentable {
     
     let urls: [URL]
+    let directoryURL: URL?
     let asCopy: Bool
     let completion: ([URL]?) -> ()
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(forExporting: urls, asCopy: asCopy)
         picker.delegate = context.coordinator
+        picker.directoryURL = directoryURL
         picker.allowsMultipleSelection = false
         return picker
     }

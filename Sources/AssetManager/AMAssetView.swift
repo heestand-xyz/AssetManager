@@ -13,24 +13,37 @@ struct AMAssetView<Content: View>: View {
     var body: some View {
         content()
 #if os(iOS) || os(visionOS)
-            .sheet(isPresented: $assetManager.showOpenFilesPicker, content: {
-                OpenFilesView(types: assetManager.filesTypes ?? [],
-                              multiSelect: assetManager.filesHasMultiSelect ?? false) { urls in
+            .sheet(isPresented: $assetManager.showOpenFilesPicker,
+                   content: {
+                OpenFilesView(
+                    types: assetManager.filesTypes ?? [],
+                    directoryURL: assetManager.filesDirectoryURL,
+                    multiSelect: assetManager.filesHasMultiSelect ?? false
+                ) { urls in
                     assetManager.filesSelectedCallback?(urls)
                 } cancelled: {
                     assetManager.filesSelectedCallback?([])
                 }
             })
-            .sheet(isPresented: $assetManager.showOpenFolderPicker, content: {
-                OpenFolderView { url in
+            .sheet(isPresented: $assetManager.showOpenFolderPicker,
+                   content: {
+                OpenFolderView(
+                    directoryURL: assetManager.folderDirectoryURL
+                ) { url in
                     assetManager.folderSelectedCallback?(url)
                 } cancelled: {
                     assetManager.folderSelectedCallback?(nil)
                 }
             })
-            .sheet(isPresented: $assetManager.showSaveFilePicker, content: {
+            .sheet(isPresented: $assetManager.showSaveFilePicker,
+                   content: {
                 if let urls: [URL] = assetManager.fileUrls {
-                    SaveFilesView(urls: urls, asCopy: assetManager.saveFileAsCopy, completion: { urls in assetManager.saveFileCompletion?(urls) })
+                    SaveFilesView(urls: urls,
+                                  directoryURL: assetManager.saveDirectoryURL,
+                                  asCopy: assetManager.saveFileAsCopy,
+                                  completion: { urls in
+                        assetManager.saveFileCompletion?(urls)
+                    })
                 }
             })
 #endif

@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 
 struct OpenFolderView: UIViewControllerRepresentable {
     
+    let directoryURL: URL?
     let pickedFolder: (URL) -> ()
     let cancelled: () -> ()
     
@@ -13,6 +14,7 @@ struct OpenFolderView: UIViewControllerRepresentable {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
+        picker.directoryURL = directoryURL
         context.coordinator.pickedFolder = { url in
             DispatchQueue.main.async {
                 pickedFolder(url)
