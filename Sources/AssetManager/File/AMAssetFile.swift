@@ -30,6 +30,16 @@ extension AMAssetFile {
         }
         return name
     }
+    public var fileExtension: String? {
+        if let urlFile = self as? AMAssetURLFile {
+            return urlFile.url.pathExtension
+        } else if let imageFile = self as? AMAssetImageFile {
+            return imageFile.fileExtension
+        } else if let rawImageFile = self as? AMAssetRawImageFile {
+            return rawImageFile.fileExtension
+        }
+        return nil
+    }
 }
 
 public struct AMAssetURLFile: AMAssetFile {

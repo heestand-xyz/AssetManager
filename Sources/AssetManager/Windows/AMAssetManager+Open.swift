@@ -188,32 +188,35 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         
-        let openPanel = NSOpenPanel()
-        
-        openPanel.title = title
-        openPanel.directoryURL = directoryURL
-        openPanel.allowsMultipleSelection = false
-        openPanel.canChooseDirectories = false
-        openPanel.canCreateDirectories = true
-        openPanel.allowedContentTypes = allowedFileTypes ?? []
-        
-        openPanel.begin { response in
-            guard response == .OK else {
-                completion(.success(nil))
-                return
+        DispatchQueue.main.async {
+    
+            let openPanel = NSOpenPanel()
+            
+            openPanel.title = title
+            openPanel.directoryURL = directoryURL
+            openPanel.allowsMultipleSelection = false
+            openPanel.canChooseDirectories = false
+            openPanel.canCreateDirectories = true
+            openPanel.allowedContentTypes = allowedFileTypes ?? []
+            
+            openPanel.begin { response in
+                guard response == .OK else {
+                    completion(.success(nil))
+                    return
+                }
+                guard let url: URL = openPanel.url else {
+                    completion(.failure(AssetOpenError.urlNotFound))
+                    return
+                }
+                guard url.startAccessingSecurityScopedResource() else {
+                    completion(.failure(AssetOpenError.noFileAccess))
+                    return
+                }
+                let name: String = url.deletingPathExtension().lastPathComponent
+                url.stopAccessingSecurityScopedResource()
+                let assetUrlFile = AMAssetURLFile(name: name, url: url)
+                completion(.success(assetUrlFile))
             }
-            guard let url: URL = openPanel.url else {
-                completion(.failure(AssetOpenError.urlNotFound))
-                return
-            }
-            guard url.startAccessingSecurityScopedResource() else {
-                completion(.failure(AssetOpenError.noFileAccess))
-                return
-            }
-            let name: String = url.deletingPathExtension().lastPathComponent
-            url.stopAccessingSecurityScopedResource()
-            let assetUrlFile = AMAssetURLFile(name: name, url: url)
-            completion(.success(assetUrlFile))
         }
     }
     
@@ -224,33 +227,36 @@ extension AMAssetManager {
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         
-        let openPanel = NSOpenPanel()
-        
-        openPanel.title = title
-        openPanel.directoryURL = directoryURL
-        openPanel.allowsMultipleSelection = true
-        openPanel.canChooseDirectories = false
-        openPanel.canCreateDirectories = true
-        openPanel.allowedContentTypes = allowedFileTypes ?? []
-        
-        openPanel.begin { response in
-            guard response == .OK else {
-                completion(.success([]))
-                return
-            }
-            var files: [AMAssetURLFile] = []
-            for url in openPanel.urls {
-                guard url.startAccessingSecurityScopedResource()
-                else {
-                    completion(.failure(AssetOpenError.noFileAccess))
+        DispatchQueue.main.async {
+            
+            let openPanel = NSOpenPanel()
+            
+            openPanel.title = title
+            openPanel.directoryURL = directoryURL
+            openPanel.allowsMultipleSelection = true
+            openPanel.canChooseDirectories = false
+            openPanel.canCreateDirectories = true
+            openPanel.allowedContentTypes = allowedFileTypes ?? []
+            
+            openPanel.begin { response in
+                guard response == .OK else {
+                    completion(.success([]))
                     return
                 }
-                let name: String = url.deletingPathExtension().lastPathComponent
-                url.stopAccessingSecurityScopedResource()
-                let file = AMAssetURLFile(name: name, url: url)
-                files.append(file)
+                var files: [AMAssetURLFile] = []
+                for url in openPanel.urls {
+                    guard url.startAccessingSecurityScopedResource()
+                    else {
+                        completion(.failure(AssetOpenError.noFileAccess))
+                        return
+                    }
+                    let name: String = url.deletingPathExtension().lastPathComponent
+                    url.stopAccessingSecurityScopedResource()
+                    let file = AMAssetURLFile(name: name, url: url)
+                    files.append(file)
+                }
+                completion(.success(files))
             }
-            completion(.success(files))
         }
     }
     
@@ -260,25 +266,28 @@ extension AMAssetManager {
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
         
-        let openPanel = NSOpenPanel()
-        
-        openPanel.title = title
-        openPanel.directoryURL = directoryURL
-        openPanel.allowsMultipleSelection = false
-        openPanel.canChooseDirectories = true
-        openPanel.canCreateDirectories = true
-        openPanel.allowedContentTypes = []
-        
-        openPanel.begin { response in
-            guard response == .OK else {
-                completion(.success(nil))
-                return
+        DispatchQueue.main.async {
+            
+            let openPanel = NSOpenPanel()
+            
+            openPanel.title = title
+            openPanel.directoryURL = directoryURL
+            openPanel.allowsMultipleSelection = false
+            openPanel.canChooseDirectories = true
+            openPanel.canCreateDirectories = true
+            openPanel.allowedContentTypes = []
+            
+            openPanel.begin { response in
+                guard response == .OK else {
+                    completion(.success(nil))
+                    return
+                }
+                guard let url: URL = openPanel.url else {
+                    completion(.failure(AssetOpenError.urlNotFound))
+                    return
+                }
+                completion(.success(url))
             }
-            guard let url: URL = openPanel.url else {
-                completion(.failure(AssetOpenError.urlNotFound))
-                return
-            }
-            completion(.success(url))
         }
     }
 }
