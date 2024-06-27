@@ -32,14 +32,10 @@ extension AMAssetManager {
         directoryURL: URL?,
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
-        openFile(
-            title: "Image",
-            directoryURL: directoryURL,
-            allowedFileTypes: AMAssetManager.AssetType.image.types
-        ) { result in
+        openImageAsURL(directoryURL: directoryURL) { result in
             switch result {
             case .success(let assetURLFile):
-                guard let assetURLFile: AMAssetURLFile = assetURLFile else {
+                guard let assetURLFile: AMAssetURLFile else {
                     completion(.success(nil))
                     return
                 }
@@ -54,6 +50,28 @@ extension AMAssetManager {
                 } catch {
                     completion(.failure(error))
                 }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    func openImageAsURL(
+        directoryURL: URL?,
+        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+    ) {
+        openFile(
+            title: "Image",
+            directoryURL: directoryURL,
+            allowedFileTypes: AMAssetManager.AssetType.image.types
+        ) { result in
+            switch result {
+            case .success(let assetURLFile):
+                guard let assetURLFile: AMAssetURLFile = assetURLFile else {
+                    completion(.success(nil))
+                    return
+                }
+                completion(.success(assetURLFile))
             case .failure(let error):
                 completion(.failure(error))
             }

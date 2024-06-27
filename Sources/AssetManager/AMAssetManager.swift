@@ -55,8 +55,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                     types.append(cube)
                 }
                 return types
-            case .file(let filenameExtension):
-                if let type = UTType(filenameExtension: filenameExtension) {
+            case .file(let fileExtension):
+                if let type = UTType(filenameExtension: fileExtension) {
                     return [type]
                 }
                 return []
@@ -170,7 +170,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
     public enum ImageAssetFormat {
         case png
         case jpg(compressionQuality: CGFloat)
-        var filenameExtension: String {
+        var fileExtension: String {
             switch self {
             case .png:
                 return "png"
@@ -428,22 +428,41 @@ extension AMAssetManager {
     // MARK: Files
 
     public func importFile(
-        filenameExtension: String,
+        withExtension fileExtension: String,
         directory: URL? = nil
     ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importFile(filenameExtension: filenameExtension, directory: directory) { result in
+            importFile(withExtension: fileExtension, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFile(
-        filenameExtension: String,
+        withExtension fileExtension: String,
         directory: URL? = nil,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.file(extension: filenameExtension), from: .files(directory: directory), autoImageConvert: false) { result in
+        importFile(type: .file(extension: fileExtension), directory: directory, completion: completion)
+    }
+    
+    public func importFile(
+        type: AssetType,
+        directory: URL? = nil
+    ) async throws -> AMAssetURLFile? {
+        try await withCheckedThrowingContinuation { continuation in
+            importFile(type: type, directory: directory) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importFile(
+        type: AssetType,
+        directory: URL? = nil,
+        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+    ) {
+        importAsset(type, from: .files(directory: directory), autoImageConvert: false) { result in
             switch result {
             case .success(let assetFile):
                 guard let assetFile: AMAssetFile = assetFile else {
@@ -570,7 +589,7 @@ extension AMAssetManager {
         }
         
         #if os(macOS)
-        saveFile(data: data, title: "Save Image", name: "\(name).\(format.filenameExtension)") { result in
+        saveFile(data: data, title: "Save Image", name: "\(name).\(format.fileExtension)") { result in
             completion(result)
         }
         #else
@@ -583,7 +602,7 @@ extension AMAssetManager {
             try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
             
             let url: URL = folderURL
-                .appendingPathComponent("\(name).\(format.filenameExtension)")
+                .appendingPathComponent("\(name).\(format.fileExtension)")
             
 //            _ = url.startAccessingSecurityScopedResource()
             try data.write(to: url)
@@ -642,7 +661,7 @@ extension AMAssetManager {
         
         #if os(macOS)
         let items: [(data: Data, name: String)] = data.enumerated().map { index, data in
-            (data: data, name: "\(name) (\(index + 1)).\(format.filenameExtension)")
+            (data: data, name: "\(name) (\(index + 1)).\(format.fileExtension)")
         }
         saveFilesInFolder(items, title: "Save Images") { result in
             completion(result)
@@ -659,7 +678,7 @@ extension AMAssetManager {
             var urls: [URL] = []
             for (index, data) in data.enumerated() {
                 let url: URL = folderURL
-                    .appendingPathComponent("\(name) (\(index + 1)).\(format.filenameExtension)")
+                    .appendingPathComponent("\(name) (\(index + 1)).\(format.fileExtension)")
 //                _ = url.startAccessingSecurityScopedResource()
                 try data.write(to: url)
 //                url.stopAccessingSecurityScopedResource()
@@ -921,15 +940,27 @@ extension AMAssetManager {
             if let type = type {
                 switch type {
                 case .image:
-                    // TODO: Respect `!autoImageConvert`
-                    openImage(
-                        directoryURL: directoryURL
-                    ) { result in
-                        switch result {
-                        case .success(let assetImageFile):
-                            completion(.success(assetImageFile))
-                        case .failure(let error):
-                            completion(.failure(error))
+                    if autoImageConvert {
+                        openImage(
+                            directoryURL: directoryURL
+                        ) { result in
+                            switch result {
+                            case .success(let assetImageFile):
+                                completion(.success(assetImageFile))
+                            case .failure(let error):
+                                completion(.failure(error))
+                            }
+                        }
+                    } else {
+                        openImageAsURL(
+                            directoryURL: directoryURL
+                        ) { result in
+                            switch result {
+                            case .success(let assetURLFile):
+                                completion(.success(assetURLFile))
+                            case .failure(let error):
+                                completion(.failure(error))
+                            }
                         }
                     }
                 case .video:
