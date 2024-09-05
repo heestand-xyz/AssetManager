@@ -37,6 +37,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         case audio
         case media
         case lut
+        case text
         case file(extension: String)
         
         public var types: [UTType] {
@@ -55,6 +56,8 @@ public final class AMAssetManager: NSObject, ObservableObject {
                     types.append(cube)
                 }
                 return types
+            case .text:
+                return [.text]
             case .file(let fileExtension):
                 if let type = UTType(filenameExtension: fileExtension) {
                     return [type]
@@ -71,7 +74,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return .videos
             case .media:
                 return .any(of: [.images, .videos])
-            case .file, .lut, .audio:
+            case .file, .lut, .audio, .text:
                 return nil
             }
         }
@@ -484,6 +487,52 @@ extension AMAssetManager {
                     return
                 }
                 completion(.success(assetURLFile))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    public func importFiles(
+        withExtension fileExtension: String,
+        directory: URL? = nil
+    ) async throws -> [AMAssetURLFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importFiles(withExtension: fileExtension, directory: directory) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importFiles(
+        withExtension fileExtension: String,
+        directory: URL? = nil,
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        importFiles(type: .file(extension: fileExtension), directory: directory, completion: completion)
+    }
+    
+    public func importFiles(
+        type: AssetType,
+        directory: URL? = nil
+    ) async throws -> [AMAssetURLFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importFiles(type: type, directory: directory) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importFiles(
+        type: AssetType,
+        directory: URL? = nil,
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        importAssets(type, from: .files(directory: directory), autoImageConvert: false) { result in
+            switch result {
+            case .success(let assetFiles):
+                let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
+                completion(.success(assetURLFiles))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -996,6 +1045,19 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .text:
+                    openFile(
+                        title: "Open Text File",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: [.text]
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFile):
+                            completion(.success(assetURLFile))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFile(
@@ -1056,7 +1118,9 @@ extension AMAssetManager {
                 }
                 completion(.success(AMAssetURLFile(name: name, url: url)))
             }
-            showOpenFilesPicker = true
+            DispatchQueue.main.async {
+                self.showOpenFilesPicker = true
+            }
             #endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
@@ -1159,6 +1223,19 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .text:
+                    openFiles(
+                        title: "Open Text Files",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: [.text]
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFiles(
@@ -1222,7 +1299,9 @@ extension AMAssetManager {
                     completion(.failure(error))
                 }
             }
-            showOpenFilesPicker = true
+            DispatchQueue.main.async {
+                self.showOpenFilesPicker = true
+            }
             #endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
