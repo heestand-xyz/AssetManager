@@ -357,6 +357,16 @@ extension AMAssetManager {
     #endif
     
     public func importImages(
+        from source: AssetSource
+    ) async throws -> [AMAssetFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importImages(from: source) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importImages(
         from source: AssetSource,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
