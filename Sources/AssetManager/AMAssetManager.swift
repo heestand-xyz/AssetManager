@@ -277,7 +277,9 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+        Task { @MainActor in
+            importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+        }
     }
     
     /// Auto converted to an image when `source` is not `.files`
@@ -299,7 +301,9 @@ extension AMAssetManager {
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+        Task { @MainActor in
+            importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+        }
     }
     
     // MARK: Images
@@ -308,7 +312,7 @@ extension AMAssetManager {
         from source: AssetSource
     ) async throws -> AMAssetImageFile? {
         try await withCheckedThrowingContinuation { [weak self] continuation in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.importImage(from: source) { result in
                     continuation.resume(with: result)
                 }
@@ -321,7 +325,7 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.importAsset(.image, from: source, autoImageConvert: true) { result in
                 switch result {
                 case .success(let assetFile):
@@ -373,7 +377,7 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.importAssets(.image, from: source, autoImageConvert: true) { result in
                 switch result {
                 case .success(let assetFiles):
@@ -409,20 +413,22 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(.video, from: source, autoImageConvert: false) { result in
-            switch result {
-            case .success(let assetFile):
-                guard let assetFile: AMAssetFile = assetFile else {
-                    completion(.success(nil))
-                    return
+        Task { @MainActor in
+            importAsset(.video, from: source, autoImageConvert: false) { result in
+                switch result {
+                case .success(let assetFile):
+                    guard let assetFile: AMAssetFile = assetFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    completion(.success(assetURLFile))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                    completion(.success(nil))
-                    return
-                }
-                completion(.success(assetURLFile))
-            case .failure(let error):
-                completion(.failure(error))
             }
         }
     }
@@ -438,7 +444,14 @@ extension AMAssetManager {
     
     #endif
     
-    // MARK: Files
+    // MARK: File
+
+    public func importFileURL(
+        withExtension fileExtension: String,
+        directory: URL? = nil
+    ) async throws -> URL? {
+        try await importFile(withExtension: fileExtension, directory: directory)?.url
+    }
 
     public func importFile(
         withExtension fileExtension: String,
@@ -459,6 +472,13 @@ extension AMAssetManager {
         importFile(type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
     
+    public func importFileURL(
+        type: AssetType,
+        directory: URL? = nil
+    ) async throws -> URL? {
+        try await importFile(type: type, directory: directory)?.url
+    }
+    
     public func importFile(
         type: AssetType,
         directory: URL? = nil
@@ -475,24 +495,36 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(type, from: .files(directory: directory), autoImageConvert: false) { result in
-            switch result {
-            case .success(let assetFile):
-                guard let assetFile: AMAssetFile = assetFile else {
-                    completion(.success(nil))
-                    return
+        Task { @MainActor in
+            importAsset(type, from: .files(directory: directory), autoImageConvert: false) { result in
+                switch result {
+                case .success(let assetFile):
+                    guard let assetFile: AMAssetFile = assetFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    completion(.success(assetURLFile))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                    completion(.success(nil))
-                    return
-                }
-                completion(.success(assetURLFile))
-            case .failure(let error):
-                completion(.failure(error))
             }
         }
     }
+    
+    // MARK: Files
 
+    public func importFileURLs(
+        withExtension fileExtension: String,
+        directory: URL? = nil
+    ) async throws -> [URL] {
+        let assetURLFiles: [AMAssetURLFile] = try await importFiles(withExtension: fileExtension, directory: directory)
+        return assetURLFiles.map(\.url)
+    }
+    
     public func importFiles(
         withExtension fileExtension: String,
         directory: URL? = nil
@@ -512,6 +544,14 @@ extension AMAssetManager {
         importFiles(type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
     
+    public func importFileURLs(
+        type: AssetType,
+        directory: URL? = nil
+    ) async throws -> [URL] {
+        let assetURLFiles: [AMAssetURLFile] = try await importFiles(type: type, directory: directory)
+        return assetURLFiles.map(\.url)
+    }
+    
     public func importFiles(
         type: AssetType,
         directory: URL? = nil
@@ -528,15 +568,25 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        importAssets(type, from: .files(directory: directory), autoImageConvert: false) { result in
-            switch result {
-            case .success(let assetFiles):
-                let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
-                completion(.success(assetURLFiles))
-            case .failure(let error):
-                completion(.failure(error))
+        Task { @MainActor in
+            importAssets(type, from: .files(directory: directory), autoImageConvert: false) { result in
+                switch result {
+                case .success(let assetFiles):
+                    let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
+                    completion(.success(assetURLFiles))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
             }
         }
+    }
+    
+    // MARK: Any File
+    
+    public func importAnyFileURL(
+        directory: URL? = nil
+    ) async throws -> URL? {
+        try await importAnyFile(directory: directory)?.url
     }
     
     public func importAnyFile(
@@ -553,20 +603,22 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
-            switch result {
-            case .success(let assetFile):
-                guard let assetFile: AMAssetFile = assetFile else {
-                    completion(.success(nil))
-                    return
+        Task { @MainActor in
+            importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
+                switch result {
+                case .success(let assetFile):
+                    guard let assetFile: AMAssetFile = assetFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                        completion(.success(nil))
+                        return
+                    }
+                    completion(.success(assetURLFile))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
-                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                    completion(.success(nil))
-                    return
-                }
-                completion(.success(assetURLFile))
-            case .failure(let error):
-                completion(.failure(error))
             }
         }
     }
@@ -580,7 +632,7 @@ extension AMAssetManager {
         directory: URL? = nil
     ) async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.selectFolder(directory: directory) { result in
                     continuation.resume(with: result)
                 }
@@ -588,6 +640,7 @@ extension AMAssetManager {
         }
     }
     
+    @MainActor
     public func selectFolder(
         directory: URL? = nil,
         completion: @escaping (Result<URL?, Error>) -> ()
@@ -667,11 +720,13 @@ extension AMAssetManager {
             try data.write(to: url)
 //            url.stopAccessingSecurityScopedResource()
             
-            saveToFiles(url: url) { result in
-                
-                try? FileManager.default.removeItem(at: url)
-                
-                completion(result)
+            Task { @MainActor in
+                saveToFiles(url: url) { result in
+                    
+                    try? FileManager.default.removeItem(at: url)
+                    
+                    completion(result)
+                }
             }
         } catch {
             print("Asset Manager - Temporary Image File Save Failed:", error)
@@ -744,13 +799,15 @@ extension AMAssetManager {
                 urls.append(url)
             }
             
-            saveToFiles(urls: urls) { result in
-                
-                for url in urls {
-                    try? FileManager.default.removeItem(at: url)
+            Task { @MainActor in
+                saveToFiles(urls: urls) { result in
+                    
+                    for url in urls {
+                        try? FileManager.default.removeItem(at: url)
+                    }
+                    
+                    completion(result)
                 }
-                
-                completion(result)
             }
         } catch {
             print("Asset Manager - Temporary Images File Save Failed:", error)
@@ -780,12 +837,15 @@ extension AMAssetManager {
         asCopy: Bool = true
     ) async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
-            saveToFiles(url: url, title: title, asCopy: asCopy) { result in
-                continuation.resume(with: result)
+            Task { @MainActor in
+                saveToFiles(url: url, title: title, asCopy: asCopy) { result in
+                    continuation.resume(with: result)
+                }
             }
         }
     }
     
+    @MainActor
     public func saveToFiles(
         url: URL,
         directory: URL? = nil,
@@ -808,18 +868,22 @@ extension AMAssetManager {
         #endif
     }
     
+    @discardableResult
     public func saveToFiles(
         urls: [URL],
         title: String? = nil,
         asCopy: Bool = true
     ) async throws -> [URL]? {
         try await withCheckedThrowingContinuation { continuation in
-            saveToFiles(urls: urls, title: title, asCopy: asCopy) { result in
-                continuation.resume(with: result)
+            Task { @MainActor in
+                saveToFiles(urls: urls, title: title, asCopy: asCopy) { result in
+                    continuation.resume(with: result)
+                }
             }
         }
     }
     
+    @MainActor
     public func saveToFiles(
         urls: [URL],
         directory: URL? = nil,
@@ -971,7 +1035,7 @@ extension AMAssetManager {
         let status = PHPhotoLibrary.authorizationStatus(for: level)
         if status == .notDetermined {
             PHPhotoLibrary.requestAuthorization(for: level) { status in
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     completion(status)
                 }
             }
@@ -987,6 +1051,7 @@ extension AMAssetManager {
 
 extension AMAssetManager {
     
+    @MainActor
     private func importAsset(
         _ type: AssetType?,
         from source: AssetSource,
@@ -1118,7 +1183,7 @@ extension AMAssetManager {
                 }
                 completion(.success(AMAssetURLFile(name: name, url: url)))
             }
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.showOpenFilesPicker = true
             }
             #endif
@@ -1178,6 +1243,7 @@ extension AMAssetManager {
         }
     }
     
+    @MainActor
     private func importAssets(
         _ type: AssetType?,
         from source: AssetSource,
@@ -1299,7 +1365,7 @@ extension AMAssetManager {
                     completion(.failure(error))
                 }
             }
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.showOpenFilesPicker = true
             }
             #endif

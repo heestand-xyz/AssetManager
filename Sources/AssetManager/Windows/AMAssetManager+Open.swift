@@ -206,7 +206,7 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
     
             let openPanel = NSOpenPanel()
             
@@ -245,7 +245,7 @@ extension AMAssetManager {
         completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             
             let openPanel = NSOpenPanel()
             
@@ -284,7 +284,7 @@ extension AMAssetManager {
         completion: @escaping (Result<URL?, Error>) -> ()
     ) {
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             
             let openPanel = NSOpenPanel()
             
