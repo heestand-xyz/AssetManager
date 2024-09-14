@@ -1592,42 +1592,47 @@ extension AMAssetManager {
         next()
     }
     
-    func dropURLs(type: UTType, providers: [NSItemProvider], completion: @escaping ([URL]) -> ()) {
-                
+    func dropURLs(types: [UTType], providers: [NSItemProvider], asCopy: Bool) async throws -> [URL] {
+        
         var providers: [NSItemProvider] = providers
         var urls: [URL] = []
         
-        func next() {
+        var folderURL: URL!
+        if asCopy {
+            folderURL = FileManager.default.temporaryDirectory
+                .appending(component: "import-on-drop-of-files")
+                .appending(component: UUID().uuidString)
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        }
+        
+        while !providers.isEmpty {
+            let provider = providers.removeFirst()
             
-            if !providers.isEmpty {
-                
-                let provider = providers.removeFirst()
-                
-                if provider.canLoadObject(ofClass: AMImage.self) {
-                    
-                    provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, error in
-                        
-                        guard error == nil,
-                              let url: URL = url else {
-                            next()
-                            return
+            for type in types {
+                if provider.hasRepresentationConforming(toTypeIdentifier: type.identifier) {
+                    if let url: URL = try await withCheckedThrowingContinuation({ continuation in
+                        _ = provider.loadFileRepresentation(for: type, openInPlace: asCopy) { url, _, error in
+                            if let error {
+                                continuation.resume(throwing: error)
+                                return
+                            }
+                            continuation.resume(returning: url)
                         }
-                        
-                        urls.append(url)
-                        
-                        next()
+                    }) {
+                        if asCopy {
+                            let fileURL: URL = folderURL.appending(component: url.lastPathComponent)
+                            try FileManager.default.copyItem(at: url, to: fileURL)
+                            urls.append(fileURL)
+                        } else {
+                            urls.append(url)
+                        }
                     }
-                } else {
-                    next()
+                    break
                 }
-                
-            } else {
-                completion(urls)
-                return
             }
         }
         
-        next()
+        return urls
     }
 }
 

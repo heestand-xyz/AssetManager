@@ -64,6 +64,7 @@ extension View {
         }
     }
     
+    @available(*, deprecated, renamed: "onDropOfURLs(filenameExtension:assetManager:isTargeted:asCopy:completion:)")
     @ViewBuilder
     public func onDropOfURLs(
         filenameExtension: String,
@@ -71,20 +72,52 @@ extension View {
         isTargeted: Binding<Bool>? = nil,
         completion: @escaping ([URL]) -> ()
     ) -> some View {
-        
         if let type = UTType(filenameExtension: filenameExtension) {
-            
-            self.onDrop(
-                of: [type],
-                isTargeted: isTargeted
-            ) { providers in
-                
-                assetManager.dropURLs(type: type, providers: providers) { urls in
+            onDropOfURLs(types: [type], assetManager: assetManager, isTargeted: isTargeted, asCopy: false, completion: {
+                if case .success(let urls) = $0 {
                     completion(urls)
                 }
-                
-                return true
+            })
+        }
+    }
+    
+    @ViewBuilder
+    public func onDropOfURLs(
+        filenameExtension: String,
+        assetManager: AMAssetManager,
+        isTargeted: Binding<Bool>? = nil,
+        asCopy: Bool,
+        completion: @escaping (Result<[URL], Error>) -> ()
+    ) -> some View {
+        if let type = UTType(filenameExtension: filenameExtension) {
+            onDropOfURLs(types: [type], assetManager: assetManager, isTargeted: isTargeted, asCopy: asCopy, completion: completion)
+        }
+    }
+    
+    public func onDropOfURLs(
+        types: [UTType],
+        assetManager: AMAssetManager,
+        isTargeted: Binding<Bool>? = nil,
+        asCopy: Bool,
+        completion: @escaping (Result<[URL], Error>) -> ()
+    ) -> some View {
+        onDrop(
+            of: types,
+            isTargeted: isTargeted
+        ) { providers in
+            Task {
+                do {
+                    let urls: [URL] = try await assetManager.dropURLs(types: types, providers: providers, asCopy: asCopy)
+                    await MainActor.run {
+                        completion(.success(urls))
+                    }
+                } catch {
+                    await MainActor.run {
+                        completion(.failure(error))
+                    }
+                }
             }
+            return true
         }
     }
 }
