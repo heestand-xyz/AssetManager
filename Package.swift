@@ -15,8 +15,8 @@ let package = Package(
             targets: ["AssetManager"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/heestand-xyz/MultiViews", from: "2.2.0"),
-        .package(url: "https://github.com/heestand-xyz/TextureMap", from: "1.0.1"),
+        .package(url: "https://github.com/heestand-xyz/MultiViews", from: "2.3.0"),
+        .package(url: "https://github.com/heestand-xyz/TextureMap", from: "1.0.4"),
     ],
     targets: [
         .target(
