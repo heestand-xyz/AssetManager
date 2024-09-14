@@ -1606,11 +1606,13 @@ extension AMAssetManager {
         }
         
         while !providers.isEmpty {
-            let provider = providers.removeFirst()
+            guard let provider: NSItemProvider = providers.first else { break }
             
             for type in types {
+                
                 if provider.hasRepresentationConforming(toTypeIdentifier: type.identifier) {
-                    if let url: URL = try await withCheckedThrowingContinuation({ continuation in
+                    
+                    let url: URL? = try await withCheckedThrowingContinuation({ continuation in
                         _ = provider.loadFileRepresentation(for: type, openInPlace: asCopy) { url, _, error in
                             if let error {
                                 continuation.resume(throwing: error)
@@ -1618,8 +1620,16 @@ extension AMAssetManager {
                             }
                             continuation.resume(returning: url)
                         }
-                    }) {
+                    })
+                    
+                    if let url {
                         if asCopy {
+                            let access: Bool = url.startAccessingSecurityScopedResource()
+                            defer {
+                                if access {
+                                    url.stopAccessingSecurityScopedResource()
+                                }
+                            }
                             let fileURL: URL = folderURL.appending(component: url.lastPathComponent)
                             try FileManager.default.copyItem(at: url, to: fileURL)
                             urls.append(fileURL)
@@ -1627,9 +1637,11 @@ extension AMAssetManager {
                             urls.append(url)
                         }
                     }
+                    
                     break
                 }
             }
+            providers.removeFirst()
         }
         
         return urls
