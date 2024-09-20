@@ -24,6 +24,7 @@ struct AMAssetView<Content: View>: View {
                 } cancelled: {
                     assetManager.filesSelectedCallback?([])
                 }
+                .ignoresSafeArea()
             })
             .sheet(isPresented: $assetManager.showOpenFolderPicker,
                    content: {
@@ -34,6 +35,7 @@ struct AMAssetView<Content: View>: View {
                 } cancelled: {
                     assetManager.folderSelectedCallback?(nil)
                 }
+                .ignoresSafeArea()
             })
             .sheet(isPresented: $assetManager.showSaveFilePicker,
                    content: {
@@ -44,6 +46,7 @@ struct AMAssetView<Content: View>: View {
                                   completion: { urls in
                         assetManager.saveFileCompletion?(urls)
                     })
+                    .ignoresSafeArea()
                 }
             })
 #endif
@@ -60,6 +63,7 @@ struct AMAssetView<Content: View>: View {
                     }, cancelled: {
                         assetManager.cameraCancelCallback?()
                     })
+                    .ignoresSafeArea()
                 }
             }
 #endif
@@ -70,6 +74,7 @@ struct AMAssetView<Content: View>: View {
                 } cancelled: {
                     assetManager.photosSelectedCallback?([])
                 }
+                .ignoresSafeArea()
             })
 #if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
@@ -77,6 +82,7 @@ struct AMAssetView<Content: View>: View {
             }) {
                 if let items: [Any] = assetManager.shareItems {
                     ShareView(items: items)
+                        .ignoresSafeArea()
                 }
             }
 #endif
