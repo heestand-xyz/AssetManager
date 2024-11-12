@@ -38,6 +38,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         case media
         case lut
         case text
+        case geometry
         case file(extension: String)
         
         public var types: [UTType] {
@@ -58,6 +59,13 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return types
             case .text:
                 return [.text]
+            case .geometry:
+                return [
+                    UTType(filenameExtension: "obj"),
+                    UTType(filenameExtension: "stl"),
+                    UTType(filenameExtension: "dae"),
+                    UTType(filenameExtension: "usdz"),
+                ].compactMap({ $0 })
             case .file(let fileExtension):
                 if let type = UTType(filenameExtension: fileExtension) {
                     return [type]
@@ -74,7 +82,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return .videos
             case .media:
                 return .any(of: [.images, .videos])
-            case .file, .lut, .audio, .text:
+            case .file, .lut, .audio, .text, .geometry:
                 return nil
             }
         }
@@ -1123,6 +1131,19 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .geometry:
+                    openFile(
+                        title: "Open Geometry File",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: AssetType.geometry.types
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFile):
+                            completion(.success(assetURLFile))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFile(
@@ -1294,6 +1315,19 @@ extension AMAssetManager {
                         title: "Open Text Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: [.text]
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                case .geometry:
+                    openFiles(
+                        title: "Open Geometry Files",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: AssetType.geometry.types
                     ) { result in
                         switch result {
                         case .success(let assetURLFiles):
