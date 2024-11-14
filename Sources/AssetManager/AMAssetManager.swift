@@ -65,6 +65,10 @@ public final class AMAssetManager: NSObject, ObservableObject {
                     UTType(filenameExtension: "stl"),
                     UTType(filenameExtension: "dae"),
                     UTType(filenameExtension: "usdz"),
+                    UTType(filenameExtension: "fbx"),
+                    UTType(filenameExtension: "glb"),
+                    UTType(filenameExtension: "gltf"),
+                    UTType(filenameExtension: "ply"),
                 ].compactMap({ $0 })
             case .file(let fileExtension):
                 if let type = UTType(filenameExtension: fileExtension) {
