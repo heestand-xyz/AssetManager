@@ -39,6 +39,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         case lut
         case text
         case geometry
+        case image3d
         case file(extension: String)
         
         public var types: [UTType] {
@@ -70,6 +71,12 @@ public final class AMAssetManager: NSObject, ObservableObject {
                     UTType(filenameExtension: "gltf"),
                     UTType(filenameExtension: "ply"),
                 ].compactMap({ $0 })
+            case .image3d:
+                var types: [UTType] = []
+                if let cube = UTType(filenameExtension: "png3d") {
+                    types.append(cube)
+                }
+                return types
             case .file(let fileExtension):
                 if let type = UTType(filenameExtension: fileExtension) {
                     return [type]
@@ -86,7 +93,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
                 return .videos
             case .media:
                 return .any(of: [.images, .videos])
-            case .file, .lut, .audio, .text, .geometry:
+            case .file, .lut, .audio, .text, .geometry, .image3d:
                 return nil
             }
         }
@@ -1148,6 +1155,19 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
+                case .image3d:
+                    openFile(
+                        title: "Open 3D Image File",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: AssetType.image3d.types
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFile):
+                            completion(.success(assetURLFile))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFile(
@@ -1332,6 +1352,19 @@ extension AMAssetManager {
                         title: "Open Geometry Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: AssetType.geometry.types
+                    ) { result in
+                        switch result {
+                        case .success(let assetURLFiles):
+                            completion(.success(assetURLFiles))
+                        case .failure(let error):
+                            completion(.failure(error))
+                        }
+                    }
+                case .image3d:
+                    openFiles(
+                        title: "Open 3D Image Files",
+                        directoryURL: directoryURL,
+                        allowedFileTypes: AssetType.image3d.types
                     ) { result in
                         switch result {
                         case .success(let assetURLFiles):
