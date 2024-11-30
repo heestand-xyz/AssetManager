@@ -433,7 +433,7 @@ extension AMAssetManager {
         completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         Task { @MainActor in
-            importAsset(.video, from: source, autoImageConvert: false) { result in
+            importAsset(.video, from: source) { result in
                 switch result {
                 case .success(let assetFile):
                     guard let assetFile: AMAssetFile = assetFile else {
@@ -445,6 +445,38 @@ extension AMAssetManager {
                         return
                     }
                     completion(.success(assetURLFile))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+    
+    public func importVideos(
+        from source: AssetSource
+    ) async throws -> [AMAssetURLFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importVideos(from: source) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func importVideos(
+        from source: AssetSource,
+        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+    ) {
+        Task { @MainActor in
+            self.importAssets(.video, from: source) { result in
+                switch result {
+                case .success(let assetFiles):
+                    let urlFiles: [AMAssetURLFile] = assetFiles.compactMap({ file in
+                        if let urlFile = file as? AMAssetURLFile {
+                            return urlFile
+                        }
+                        return nil
+                    })
+                    completion(.success(urlFiles))
                 case .failure(let error):
                     completion(.failure(error))
                 }
@@ -1074,7 +1106,7 @@ extension AMAssetManager {
     private func importAsset(
         _ type: AssetType?,
         from source: AssetSource,
-        autoImageConvert: Bool,
+        autoImageConvert: Bool = false,
         completion: @escaping (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
@@ -1292,7 +1324,7 @@ extension AMAssetManager {
     private func importAssets(
         _ type: AssetType?,
         from source: AssetSource,
-        autoImageConvert: Bool,
+        autoImageConvert: Bool = false,
         completion: @escaping (Result<[AMAssetFile], Error>) -> ()
     ) {
         switch source {
