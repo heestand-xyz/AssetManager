@@ -18,6 +18,7 @@ struct CameraView: UIViewControllerRepresentable {
         picker.sourceType = .camera
         if mode == .video {
             picker.mediaTypes = [kUTTypeMovie as String]
+            picker.videoQuality = .typeHigh
         }
         picker.cameraCaptureMode = mode
         picker.delegate = context.coordinator

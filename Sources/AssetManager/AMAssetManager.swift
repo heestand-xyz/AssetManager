@@ -1504,7 +1504,18 @@ extension AMAssetManager {
             }
             showPhotosPicker = true
         case .camera:
-            break
+            importAsset(type, from: .camera) { result in
+                switch result {
+                case .success(let asset):
+                    if let asset {
+                        completion(.success([asset]))
+                    } else {
+                        completion(.success([]))
+                    }
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
         }
     }
 }
