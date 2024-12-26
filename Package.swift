@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/heestand-xyz/MultiViews", from: "2.3.0"),
-        .package(url: "https://github.com/heestand-xyz/TextureMap", from: "1.0.4"),
+        .package(url: "https://github.com/heestand-xyz/TextureMap", from: "2.0.0"),
     ],
     targets: [
         .target(
