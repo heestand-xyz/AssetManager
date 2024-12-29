@@ -2,6 +2,7 @@
 
 import SwiftUI
 import MobileCoreServices
+import UniformTypeIdentifiers
 
 struct CameraView: UIViewControllerRepresentable {
 
@@ -17,7 +18,7 @@ struct CameraView: UIViewControllerRepresentable {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         if mode == .video {
-            picker.mediaTypes = [kUTTypeMovie as String]
+            picker.mediaTypes = [UTType.movie.identifier]
             picker.videoQuality = .typeHigh
         }
         picker.cameraCaptureMode = mode

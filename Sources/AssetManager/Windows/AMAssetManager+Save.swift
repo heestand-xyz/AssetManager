@@ -14,7 +14,7 @@ extension AMAssetManager {
     
     func saveFile(url: URL,
                   title: String? = nil,
-                  completion: ((Result<URL?, Error>) -> ())? = nil) {
+                  completion: (@Sendable (Result<URL?, Error>) -> ())? = nil) {
         do {
             
             let data: Data = try Data(contentsOf: url)
@@ -34,7 +34,7 @@ extension AMAssetManager {
     func saveFile(data: Data,
                   title: String? = nil,
                   name: String,
-                  completion: ((Result<URL?, Error>) -> ())? = nil) {
+                  completion: (@Sendable (Result<URL?, Error>) -> ())? = nil) {
         
         DispatchQueue.main.async {
             
@@ -64,7 +64,7 @@ extension AMAssetManager {
         _ items: [(data: Data, name: String)],
         title: String? = nil,
         directory: URL? = nil,
-        completion: ((Result<[URL]?, Error>) -> ())? = nil
+        completion: (@Sendable (Result<[URL]?, Error>) -> ())? = nil
     ) {
         DispatchQueue.main.async {
             self.openFolder(title: title ?? "Save Files in Folder", directoryURL: directory) { result in

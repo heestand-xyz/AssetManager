@@ -1,12 +1,13 @@
 {
+  "originHash" : "6d831a7f149b9da299f9341614ecf1074146c143788b17fee0678afabe7b0f9b",
   "pins" : [
     {
       "identity" : "coregraphicsextensions",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/CoreGraphicsExtensions",
       "state" : {
-        "revision" : "7ddb96f057a10694ceaa4581bdaa5aa0c7eef87d",
-        "version" : "1.7.1"
+        "revision" : "e46bb3c71226d7b1cafe9739f9dd4b46caf04e7c",
+        "version" : "1.9.0"
       }
     },
     {
@@ -14,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/MultiViews",
       "state" : {
-        "revision" : "d44f3288d42a9f9a663bcd125115b53e66d63259",
-        "version" : "2.2.1"
+        "revision" : "3db0a3a5f49b4689b8a57a0e4197bd6399764add",
+        "version" : "2.3.0"
       }
     },
     {
@@ -23,10 +24,10 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/heestand-xyz/TextureMap",
       "state" : {
-        "revision" : "0868ffb2470f7fbd3feca35ca35d91e1cd514365",
-        "version" : "1.0.1"
+        "revision" : "c73e99f8116f045a115f9fb5929d46911e817007",
+        "version" : "2.0.1"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

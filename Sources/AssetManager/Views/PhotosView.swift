@@ -13,6 +13,7 @@ import AppKit
 import SwiftUI
 import PhotosUI
 import MultiViews
+import TextureMap
 
 struct PhotosView: ViewRepresentable {
     
@@ -47,7 +48,7 @@ struct PhotosView: ViewRepresentable {
         Coordinator()
     }
     
-    class Coordinator: PHPickerViewControllerDelegate {
+    final class Coordinator: PHPickerViewControllerDelegate, Sendable {
         
         var picker: PHPickerViewController!
         
@@ -77,11 +78,13 @@ struct PhotosView: ViewRepresentable {
                                     continuation.resume(returning: nil)
                                     return
                                 }
-                                do {
-                                    let newURL = try Self.map(url: url)
-                                    continuation.resume(returning: newURL)
-                                } catch {
-                                    continuation.resume(throwing: error)
+                                Task { @MainActor in
+                                    do {
+                                        let newURL = try Self.map(url: url)
+                                        continuation.resume(returning: newURL)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
                                 }
                             }
                         }) {
@@ -100,11 +103,13 @@ struct PhotosView: ViewRepresentable {
                                     continuation.resume(returning: nil)
                                     return
                                 }
-                                do {
-                                    let newURL = try Self.map(url: url)
-                                    continuation.resume(returning: newURL)
-                                } catch {
-                                    continuation.resume(throwing: error)
+                                Task { @MainActor in
+                                    do {
+                                        let newURL = try Self.map(url: url)
+                                        continuation.resume(returning: newURL)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
                                 }
                             }
                         }) {
@@ -113,16 +118,16 @@ struct PhotosView: ViewRepresentable {
                         
                     } else if result.itemProvider.canLoadObject(ofClass: AMImage.self) {
                         
-                        if let image: AMImage = try? await withCheckedThrowingContinuation({ continuation in
+                        if let image: TMSendableImage = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadObject(ofClass: AMImage.self, completionHandler: { provider, error in
                                 if let error {
                                     continuation.resume(throwing: error)
                                     return
                                 }
-                                continuation.resume(returning: provider as? AMImage)
+                                continuation.resume(returning: (provider as? AMImage)?.send())
                             })
                         }) {
-                            assets.append(image as Any)
+                            assets.append(image.receive() as Any)
                         }
                         
                     } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.movie.identifier) {
@@ -137,11 +142,13 @@ struct PhotosView: ViewRepresentable {
                                     continuation.resume(returning: nil)
                                     return
                                 }
-                                do {
-                                    let newURL = try Self.map(url: url)
-                                    continuation.resume(returning: newURL)
-                                } catch {
-                                    continuation.resume(throwing: error)
+                                Task { @MainActor in
+                                    do {
+                                        let newURL = try Self.map(url: url)
+                                        continuation.resume(returning: newURL)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
                                 }
                             }
                         }) {

@@ -4,24 +4,24 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import TextureMap
 
 extension View {
     
     public func onDropOfImages(
         assetManager: AMAssetManager,
         isTargeted: Binding<Bool>? = nil,
-        completion: @escaping ([AMImage]) -> ()
+        completion: @escaping ([AMAssetImageFile], CGPoint) -> ()
     ) -> some View {
         
         self.onDrop(
             of: AMAssetManager.AssetType.image.types,
             isTargeted: isTargeted
-        ) { providers in
-            
-            assetManager.dropImages(providers: providers) { images in
-                completion(images)
+        ) { providers, location in
+            Task {
+                guard let images: [AMAssetImageFile] = try? await assetManager.dropImages(providers: providers), !images.isEmpty else { return }
+                completion(images, location)
             }
-            
             return true
         }
     }
@@ -29,18 +29,17 @@ extension View {
     public func onDropOfVideos(
         assetManager: AMAssetManager,
         isTargeted: Binding<Bool>? = nil,
-        completion: @escaping ([URL]) -> ()
+        completion: @escaping ([URL], CGPoint) -> ()
     ) -> some View {
         
         self.onDrop(
             of: AMAssetManager.AssetType.video.types,
             isTargeted: isTargeted
-        ) { providers in
-            
-            assetManager.dropVideos(providers: providers) { urls in
-                completion(urls)
+        ) { providers, location in
+            Task {
+                guard let urls: [URL] = try? await assetManager.dropVideos(providers: providers), !urls.isEmpty else { return }
+                completion(urls, location)
             }
-            
             return true
         }
     }
@@ -48,36 +47,18 @@ extension View {
     public func onDropOfMedia(
         assetManager: AMAssetManager,
         isTargeted: Binding<Bool>? = nil,
-        completion: @escaping ([AMAssetFile]) -> ()
+        completion: @escaping ([AMAssetFile], CGPoint) -> ()
     ) -> some View {
         
         self.onDrop(
             of: AMAssetManager.AssetType.media.types,
             isTargeted: isTargeted
-        ) { providers in
-            
-            assetManager.dropMedia(providers: providers) { assetFiles in
-                completion(assetFiles)
+        ) { providers, location in
+            Task {
+                guard let assetFiles: [AMAssetFile] = try? await assetManager.dropMedia(providers: providers), !assetFiles.isEmpty else { return }
+                completion(assetFiles, location)
             }
-            
             return true
-        }
-    }
-    
-    @available(*, deprecated, renamed: "onDropOfURLs(filenameExtension:assetManager:isTargeted:asCopy:completion:)")
-    @ViewBuilder
-    public func onDropOfURLs(
-        filenameExtension: String,
-        assetManager: AMAssetManager,
-        isTargeted: Binding<Bool>? = nil,
-        completion: @escaping ([URL]) -> ()
-    ) -> some View {
-        if let type = UTType(filenameExtension: filenameExtension) {
-            onDropOfURLs(types: [type], assetManager: assetManager, isTargeted: isTargeted, asCopy: false, completion: {
-                if case .success(let urls) = $0 {
-                    completion(urls)
-                }
-            })
         }
     }
     
@@ -87,7 +68,7 @@ extension View {
         assetManager: AMAssetManager,
         isTargeted: Binding<Bool>? = nil,
         asCopy: Bool,
-        completion: @escaping (Result<[URL], Error>) -> ()
+        completion: @escaping (Result<[URL], Error>, CGPoint) -> ()
     ) -> some View {
         if let type = UTType(filenameExtension: filenameExtension) {
             onDropOfURLs(types: [type], assetManager: assetManager, isTargeted: isTargeted, asCopy: asCopy, completion: completion)
@@ -99,21 +80,21 @@ extension View {
         assetManager: AMAssetManager,
         isTargeted: Binding<Bool>? = nil,
         asCopy: Bool,
-        completion: @escaping (Result<[URL], Error>) -> ()
+        completion: @escaping (Result<[URL], Error>, CGPoint) -> ()
     ) -> some View {
         onDrop(
             of: types,
             isTargeted: isTargeted
-        ) { providers in
+        ) { providers, location in
             Task {
                 do {
                     let urls: [URL] = try await assetManager.dropURLs(types: types, providers: providers, asCopy: asCopy)
                     await MainActor.run {
-                        completion(.success(urls))
+                        completion(.success(urls), location)
                     }
                 } catch {
                     await MainActor.run {
-                        completion(.failure(error))
+                        completion(.failure(error), location)
                     }
                 }
             }

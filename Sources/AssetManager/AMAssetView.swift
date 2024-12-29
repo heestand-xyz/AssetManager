@@ -4,9 +4,18 @@
 
 import SwiftUI
 
+extension View {
+    
+    public func asset(manager: AMAssetManager) -> some View {
+        AMAssetView(assetManager: manager) {
+            self
+        }
+    }
+}
+
 struct AMAssetView<Content: View>: View {
     
-    @ObservedObject var assetManager: AMAssetManager
+    @Bindable var assetManager: AMAssetManager
     
     let content: () -> Content
     
@@ -86,14 +95,5 @@ struct AMAssetView<Content: View>: View {
                 }
             }
 #endif
-    }
-}
-
-extension View {
-    
-    public func asset(manager: AMAssetManager) -> some View {
-        AMAssetView(assetManager: manager) {
-            self
-        }
     }
 }

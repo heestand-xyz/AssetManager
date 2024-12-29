@@ -18,7 +18,7 @@ public typealias AMImage = NSImage
 public typealias AMImage = UIImage
 #endif
 
-public protocol AMAssetFile {
+public protocol AMAssetFile: Sendable {
     var name: String? { get }
 }
 
@@ -60,7 +60,7 @@ public struct AMAssetDataFile: AMAssetFile {
     }
 }
 
-public struct AMAssetImageFile: AMAssetFile {
+public struct AMAssetImageFile: AMAssetFile, @unchecked Sendable {
     public let name: String?
     public let image: AMImage
     public init(name: String? = nil, image: AMImage) {
@@ -69,7 +69,7 @@ public struct AMAssetImageFile: AMAssetFile {
     }
 }
 
-public struct AMAssetRawImageFile: AMAssetFile {
+public struct AMAssetRawImageFile: AMAssetFile, @unchecked Sendable {
     public let name: String?
     public let format: String
     public let image: AMImage

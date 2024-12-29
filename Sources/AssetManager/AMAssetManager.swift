@@ -14,9 +14,10 @@ import UniformTypeIdentifiers
 import PhotosUI
 import TextureMap
 
-public final class AMAssetManager: NSObject, ObservableObject {
+@Observable
+public final class AMAssetManager: NSObject, Sendable {
     
-    public enum AssetSource {
+    public enum AssetSource: Sendable {
         case photos
         case files(directory: URL?)
         case camera
@@ -30,7 +31,7 @@ public final class AMAssetManager: NSObject, ObservableObject {
         }
     }
     
-    public enum AssetType {
+    public enum AssetType: Sendable {
         
         case image
         case video
@@ -204,42 +205,43 @@ public final class AMAssetManager: NSObject, ObservableObject {
     
     #if os(iOS) || os(visionOS)
     
-    @Published var showOpenFilesPicker: Bool = false
-    var filesTypes: [UTType]?
-    var filesHasMultiSelect: Bool?
-    var filesDirectoryURL: URL?
-    var filesSelectedCallback: (([URL]) -> ())?
+    @MainActor var showOpenFilesPicker: Bool = false
+    @MainActor var filesTypes: [UTType]?
+    @MainActor var filesHasMultiSelect: Bool?
+    @MainActor var filesDirectoryURL: URL?
+    @MainActor @ObservationIgnored var filesSelectedCallback: (([URL]) -> ())?
     
-    @Published var showOpenFolderPicker: Bool = false
-    var folderDirectoryURL: URL?
-    var folderSelectedCallback: ((URL?) -> ())?
+    @MainActor var showOpenFolderPicker: Bool = false
+    @MainActor var folderDirectoryURL: URL?
+    @MainActor @ObservationIgnored var folderSelectedCallback: ((URL?) -> ())?
     
-    @Published var showSaveFilePicker: Bool = false
-    var saveFileAsCopy: Bool = true
-    var saveDirectoryURL: URL?
-    var fileUrls: [URL]?
-    var saveFileCompletion: (([URL]?) -> ())?
+    @MainActor var showSaveFilePicker: Bool = false
+    @MainActor var saveFileAsCopy: Bool = true
+    @MainActor var saveDirectoryURL: URL?
+    @MainActor var fileUrls: [URL]?
+    @MainActor @ObservationIgnored var saveFileCompletion: (([URL]?) -> ())?
     
-    @Published var showShare: Bool = false
-    var shareItems: [Any]?
+    @MainActor var showShare: Bool = false
+    @MainActor var shareItems: [Any]?
     
     #if os(iOS)
-    @Published var showCameraPicker: Bool = false
-    var cameraMode: UIImagePickerController.CameraCaptureMode?
-    var cameraImageCallback: ((UIImage) -> ())?
-    var cameraVideoCallback: ((URL) -> ())?
-    var cameraCancelCallback: (() -> ())?
+    @MainActor var showCameraPicker: Bool = false
+    @MainActor var cameraMode: UIImagePickerController.CameraCaptureMode?
+    @MainActor @ObservationIgnored var cameraImageCallback: ((UIImage) -> ())?
+    @MainActor @ObservationIgnored var cameraVideoCallback: ((URL) -> ())?
+    @MainActor @ObservationIgnored var cameraCancelCallback: (() -> ())?
     #endif
     
-    private var imageSaveCompletionHandler: ((Error?) -> ())?
-    private var videoSaveCompletionHandler: ((Error?) -> ())?
+    @MainActor @ObservationIgnored private var imageSaveCompletionHandler: ((Error?) -> ())?
+    @MainActor @ObservationIgnored private var videoSaveCompletionHandler: ((Error?) -> ())?
     
     #endif
     
-    @Published var showPhotosPicker: Bool = false
-    var photosFilter: PHPickerFilter?
-    var photosHasMultiSelect: Bool?
-    var photosSelectedCallback: (([Any]) -> ())?
+    
+    @MainActor var showPhotosPicker: Bool = false
+    @MainActor @ObservationIgnored var photosFilter: PHPickerFilter?
+    @MainActor @ObservationIgnored var photosHasMultiSelect: Bool?
+    @MainActor @ObservationIgnored var photosSelectedCallback: (([Any]) -> ())?
 }
 
 // MARK: - Share
@@ -249,23 +251,31 @@ extension AMAssetManager {
     #if os(iOS) || os(visionOS)
     
     public func share(image: AMImage) {
-        shareItems = [image]
-        showShare = true
+        Task { @MainActor in
+            shareItems = [image]
+            showShare = true
+        }
     }
     
     public func share(images: [AMImage]) {
-        shareItems = images
-        showShare = true
+        Task { @MainActor in
+            shareItems = images
+            showShare = true
+        }
     }
     
     public func share(url: URL) {
-        shareItems = [url]
-        showShare = true
+        Task { @MainActor in
+            shareItems = [url]
+            showShare = true
+        }
     }
     
     public func share(urls: [URL]) {
-        shareItems = urls
-        showShare = true
+        Task { @MainActor in
+            shareItems = urls
+            showShare = true
+        }
     }
     
     #endif
@@ -293,7 +303,7 @@ extension AMAssetManager {
     public func importOneMedia(
         from source: AssetSource,
         autoImageConvert: Bool? = nil,
-        completion: @escaping (Result<AMAssetFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
         Task { @MainActor in
@@ -317,7 +327,7 @@ extension AMAssetManager {
     public func importMultipleMedia(
         from source: AssetSource,
         autoImageConvert: Bool? = nil,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
         Task { @MainActor in
@@ -331,21 +341,19 @@ extension AMAssetManager {
         from source: AssetSource
     ) async throws -> AMAssetImageFile? {
         try await withCheckedThrowingContinuation { [weak self] continuation in
-            Task { @MainActor in
-                self?.importImage(from: source) { result in
-                    continuation.resume(with: result)
-                }
+            self?.importImage(from: source) { result in
+                continuation.resume(with: result)
             }
         }
     }
     
     public func importImage(
         from source: AssetSource,
-        completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetImageFile?, Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
         Task { @MainActor in
-            self.importAsset(.image, from: source, autoImageConvert: true) { result in
+            self.importAsset(.image, from: source, autoImageConvert: autoImageConvert) { result in
                 switch result {
                 case .success(let assetFile):
                     guard let assetFile: AMAssetFile = assetFile else {
@@ -368,14 +376,14 @@ extension AMAssetManager {
     
     public func importImages(
         directory: URL? = nil,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         openImages(directoryURL: directory, completion: completion)
     }
     
     public func importImagesAsURLs(
         directory: URL? = nil,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openImagesAsURLs(directoryURL: directory, completion: completion)
     }
@@ -394,7 +402,7 @@ extension AMAssetManager {
     
     public func importImages(
         from source: AssetSource,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         Task { @MainActor in
             self.importAssets(.image, from: source, autoImageConvert: true) { result in
@@ -430,7 +438,7 @@ extension AMAssetManager {
     
     public func importVideo(
         from source: AssetSource,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         Task { @MainActor in
             importAsset(.video, from: source) { result in
@@ -464,7 +472,7 @@ extension AMAssetManager {
     
     public func importVideos(
         from source: AssetSource,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         Task { @MainActor in
             self.importAssets(.video, from: source) { result in
@@ -488,7 +496,7 @@ extension AMAssetManager {
     
     public func importVideos(
         directory: URL? = nil,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openVideos(directoryURL: directory, completion: completion)
     }
@@ -518,7 +526,7 @@ extension AMAssetManager {
     public func importFile(
         withExtension fileExtension: String,
         directory: URL? = nil,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         importFile(type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
@@ -544,7 +552,7 @@ extension AMAssetManager {
     public func importFile(
         type: AssetType,
         directory: URL? = nil,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         Task { @MainActor in
             importAsset(type, from: .files(directory: directory), autoImageConvert: false) { result in
@@ -590,7 +598,7 @@ extension AMAssetManager {
     public func importFiles(
         withExtension fileExtension: String,
         directory: URL? = nil,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         importFiles(type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
@@ -617,7 +625,7 @@ extension AMAssetManager {
     public func importFiles(
         type: AssetType,
         directory: URL? = nil,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         Task { @MainActor in
             importAssets(type, from: .files(directory: directory), autoImageConvert: false) { result in
@@ -652,7 +660,7 @@ extension AMAssetManager {
     
     public func importAnyFile(
         directory: URL? = nil,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         Task { @MainActor in
             importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
@@ -694,7 +702,7 @@ extension AMAssetManager {
     @MainActor
     public func selectFolder(
         directory: URL? = nil,
-        completion: @escaping (Result<URL?, Error>) -> ()
+        completion: @escaping @Sendable (Result<URL?, Error>) -> ()
     ) {
         #if os(macOS)
         openFolder(title: "Folder", directoryURL: directory, completion: completion)
@@ -732,7 +740,7 @@ extension AMAssetManager {
         _ image: AMImage,
         name: String,
         as format: ImageAssetFormat = .png,
-        completion: @escaping (Result<URL?, Error>) -> ()
+        completion: @escaping @Sendable (Result<URL?, Error>) -> ()
     ) {
                 
         let data: Data
@@ -803,7 +811,7 @@ extension AMAssetManager {
         _ images: [AMImage],
         name: String,
         as format: ImageAssetFormat = .png,
-        completion: @escaping (Result<[URL]?, Error>) -> ()
+        completion: @escaping @Sendable (Result<[URL]?, Error>) -> ()
     ) {
                 
         var data: [Data] = []
@@ -851,12 +859,11 @@ extension AMAssetManager {
             }
             
             Task { @MainActor in
+                let urls = urls
                 saveToFiles(urls: urls) { result in
-                    
                     for url in urls {
                         try? FileManager.default.removeItem(at: url)
                     }
-                    
                     completion(result)
                 }
             }
@@ -902,7 +909,7 @@ extension AMAssetManager {
         directory: URL? = nil,
         title: String? = nil,
         asCopy: Bool = true,
-        completion: ((Result<URL?, Error>) -> ())? = nil
+        completion: (@Sendable (Result<URL?, Error>) -> ())? = nil
     ) {
         #if os(iOS) || os(visionOS)
         fileUrls = [url]
@@ -940,7 +947,7 @@ extension AMAssetManager {
         directory: URL? = nil,
         title: String? = nil,
         asCopy: Bool = true,
-        completion: ((Result<[URL]?, Error>) -> ())? = nil
+        completion: (@Sendable (Result<[URL]?, Error>) -> ())? = nil
     ) {
         #if os(iOS) || os(visionOS)
         fileUrls = urls
@@ -986,7 +993,7 @@ extension AMAssetManager {
     public func saveImageToPhotos(
         _ image: AMImage,
         alphaFix: Bool = true,
-        completion: @escaping (Error?) -> ()
+        completion: @escaping @Sendable (Error?) -> ()
     ) {
         var image: AMImage = image
         if alphaFix {
@@ -999,7 +1006,9 @@ extension AMAssetManager {
             image = dataImage
         }
         UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted), nil)
-        imageSaveCompletionHandler = completion
+        Task { @MainActor in
+            imageSaveCompletionHandler = completion
+        }
     }
     
     public func saveGIF(url: URL) async throws {
@@ -1013,7 +1022,7 @@ extension AMAssetManager {
             }
         }
     }
-    public func saveGIF(url: URL, completion: @escaping (Error?) -> ()) {
+    public func saveGIF(url: URL, completion: @escaping @Sendable (Error?) -> ()) {
         requestAuthorization(for: .addOnly) { status in
             if status != .authorized {
                 completion(AssetError.notAuthorized(status))
@@ -1031,8 +1040,10 @@ extension AMAssetManager {
     @objc func imageSaveCompleted(_ image: UIImage,
                                   didFinishSavingWithError error: Error?,
                                   contextInfo: UnsafeRawPointer) {
-        imageSaveCompletionHandler?(error)
-        imageSaveCompletionHandler = nil
+        Task { @MainActor in
+            imageSaveCompletionHandler?(error)
+            imageSaveCompletionHandler = nil
+        }
     }
     
     public func saveVideoToPhotos(
@@ -1051,7 +1062,7 @@ extension AMAssetManager {
     
     public func saveVideoToPhotos(
         url: URL,
-        completion: @escaping (Error?) -> ()
+        completion: @escaping @Sendable (Error?) -> ()
     ) {
         let path: String = url.path(percentEncoded: false)
         guard UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path) else {
@@ -1059,7 +1070,9 @@ extension AMAssetManager {
             return
         }
         UISaveVideoAtPathToSavedPhotosAlbum(path, self, #selector(videoSaveCompleted), nil)
-        videoSaveCompletionHandler = completion
+        Task { @MainActor in
+            videoSaveCompletionHandler = completion
+        }
 //        requestAuthorization {
 //            PHPhotoLibrary.shared().performChanges({
 //                let request = PHAssetCreationRequest.forAsset()
@@ -1075,13 +1088,15 @@ extension AMAssetManager {
     @objc func videoSaveCompleted(_ videoPath: String?,
                                   didFinishSavingWithError error: Error?,
                                   contextInfo: UnsafeMutableRawPointer?) {
-        videoSaveCompletionHandler?(error)
-        videoSaveCompletionHandler = nil
+        Task { @MainActor in
+            videoSaveCompletionHandler?(error)
+            videoSaveCompletionHandler = nil
+        }
     }
     
     public func requestAuthorization(
         for level: PHAccessLevel,
-        completion: @escaping (PHAuthorizationStatus) -> ()
+        completion: @escaping @Sendable (PHAuthorizationStatus) -> ()
     ) {
         let status = PHPhotoLibrary.authorizationStatus(for: level)
         if status == .notDetermined {
@@ -1107,7 +1122,7 @@ extension AMAssetManager {
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
-        completion: @escaping (Result<AMAssetFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
         case .files(let directoryURL):
@@ -1325,7 +1340,7 @@ extension AMAssetManager {
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         switch source {
         case .files(let directoryURL):
@@ -1524,187 +1539,151 @@ extension AMAssetManager {
 
 extension AMAssetManager {
     
-    func dropImages(providers: [NSItemProvider], completion: @escaping ([AMImage]) -> ()) {
-        
-        var providers: [NSItemProvider] = providers
-        var images: [AMImage] = []
-        
-        func next() {
-            
-            if !providers.isEmpty {
-                
-                let provider = providers.removeFirst()
-             
-                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                    
-                    provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, error in
-                        
-                        guard error == nil,
-                              let data: Data = data,
-                              let image = AMImage(data: data) else {
-                            next()
-                            return
-                        }
-                        
-                        images.append(image)
-                        
-                        next()
-                    }
-                } else {
-                    next()
-                }
-                
-            } else {
-                completion(images)
-                return
-            }
-        }
-        
-        next()
+    enum DropError: Error {
+//        case noImage
+        case noData
+        case noURL
+        case badImageData
     }
     
-    func dropVideos(providers: [NSItemProvider], completion: @escaping ([URL]) -> ()) {
-        
-        var providers: [NSItemProvider] = providers
+//    private func loadImage(from provider: NSItemProvider) async throws -> AMImage? {
+//        guard provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) else { return nil }
+//        return try await withCheckedThrowingContinuation { continuation in
+//            provider.loadObject(ofClass: AMImage.self) { image, error in
+//                if let error: Error {
+//                    continuation.resume(throwing: error)
+//                    return
+//                }
+//                guard let image: AMImage else {
+//                    continuation.resume(throwing: DropError.noImage)
+//                    return
+//                }
+//                continuation.resume(returning: image)
+//            }
+//        }
+//    }
+    
+    private func loadData(as type: UTType, from provider: NSItemProvider) async throws -> Data? {
+        guard provider.hasItemConformingToTypeIdentifier(type.identifier) else { return nil }
+        return try await withCheckedThrowingContinuation { continuation in
+            provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, error in
+                if let error: Error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let data: Data else {
+                    continuation.resume(throwing: DropError.noData)
+                    return
+                }
+                continuation.resume(returning: data)
+            }
+        }
+    }
+    
+    private func loadURL(as type: UTType, from provider: NSItemProvider) async throws -> URL? {
+        guard provider.hasItemConformingToTypeIdentifier(type.identifier) else { return nil }
+        return try await withCheckedThrowingContinuation { continuation in
+//            provider.loadItem(forTypeIdentifier: type.identifier) { url, error in
+            provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, error in
+                if let error: Error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let url: URL else {
+                    continuation.resume(throwing: DropError.noURL)
+                    return
+                }
+                continuation.resume(returning: url)
+            }
+        }
+    }
+    
+    func dropImages(providers: [NSItemProvider]) async throws -> [AMAssetImageFile] {
+        var imageFiles: [AMAssetImageFile] = []
+        for provider in providers {
+            guard let data: Data = try await loadData(as: .image, from: provider) else { continue }
+            guard let image = AMImage(data: data) else {
+                throw DropError.badImageData
+            }
+            let imageFile = AMAssetImageFile(image: image)
+            imageFiles.append(imageFile)
+        }
+        return imageFiles
+    }
+    
+//    func dropImages(providers: [NSItemProvider], completion: @escaping ([AMImage]) -> ()) {
+//        Task {
+//            let images: [AMImage] = try await dropImages(providers: providers)
+//            await MainActor.run {
+//                completion(images)
+//            }
+//        }
+//    }
+    
+    func dropVideos(providers: [NSItemProvider]) async throws -> [URL] {
         var urls: [URL] = []
-        
-        func next() {
-            
-            if !providers.isEmpty {
-                
-                let provider = providers.removeFirst()
-                
-                if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                    
-                    provider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
-                        
-                        guard error == nil,
-                              let url: URL = url else {
-                            next()
-                            return
-                        }
-                        
-                        urls.append(url)
-                        
-                        next()
-                    }
-                } else {
-                    next()
-                }
-                
-            } else {
-                completion(urls)
-                return
-            }
+        for provider in providers {
+            guard let url: URL = try await loadURL(as: .movie, from: provider) else { continue }
+            urls.append(url)
         }
-        
-        next()
+        return urls
     }
     
-    func dropMedia(providers: [NSItemProvider], completion: @escaping ([AMAssetFile]) -> ()) {
-        
-        var providers: [NSItemProvider] = providers
+//    func dropVideos(providers: [NSItemProvider], completion: @escaping ([URL]) -> ()) {
+//        Task {
+//            let urls: [URL] = try await dropVideos(providers: providers)
+//            await MainActor.run {
+//                completion(urls)
+//            }
+//        }
+//    }
+    
+    func dropMedia(providers: [NSItemProvider]) async throws -> [AMAssetFile] {
         var assetFiles: [AMAssetFile] = []
-        
-        func next() {
+        for provider in providers {
             
-            if !providers.isEmpty {
+            if provider.hasItemConformingToTypeIdentifier(UTType.gif.identifier) {
+                guard let url: URL = try await loadURL(as: .gif, from: provider) else { continue }
+                let name: String = url.deletingPathExtension().lastPathComponent
+                let assetFile = AMAssetURLFile(name: name, url: url)
+                assetFiles.append(assetFile)
                 
-                let provider = providers.removeFirst()
-                
-                if provider.hasItemConformingToTypeIdentifier(UTType.gif.identifier) {
-                    
-                    provider.loadItem(forTypeIdentifier: UTType.gif.identifier) { object, error in
-                        
-                        guard error == nil,
-                              let url: URL = object as? URL else {
-                            next()
-                            return
-                        }
-                        
-                        let name: String = url.deletingPathExtension().lastPathComponent
-                        
-                        let assetFile = AMAssetURLFile(name: name, url: url)
-                        
-                        assetFiles.append(assetFile)
-                        
-                        next()
-                    }
-                } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                    
-                    provider.loadObject(ofClass: AMImage.self) { object, error in
-                        
-                        guard error == nil,
-                              let image = object as? AMImage else {
-                            next()
-                            return
-                        }
-                        
-                        // TODO: Get Image Name
-                        
-                        let assetFile = AMAssetImageFile(name: nil, image: image)
-                        
-                        assetFiles.append(assetFile)
-                        
-                        next()
-                    }
-                } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                    
-                    provider.loadItem(forTypeIdentifier: UTType.movie.identifier) { object, error in
-                        
-                        guard error == nil,
-                              let url: URL = object as? URL else {
-                            next()
-                            return
-                        }
-                        
-                        let name: String = url.deletingPathExtension().lastPathComponent
-                        
-                        let assetFile = AMAssetURLFile(name: name, url: url)
-                        
-                        assetFiles.append(assetFile)
-                        
-                        next()
-                    }
-                } else {
-                    var foundLUT: Bool = false
-                    for lutType in AMAssetManager.AssetType.lut.types {
-                        if provider.hasItemConformingToTypeIdentifier(lutType.identifier) {
-                            
-                            provider.loadItem(forTypeIdentifier: lutType.identifier) { object, error in
-                                
-                                guard error == nil,
-                                      let url: URL = object as? URL else {
-                                    next()
-                                    return
-                                }
-                                
-                                let name: String = url.deletingPathExtension().lastPathComponent
-                                
-                                let assetFile = AMAssetURLFile(name: name, url: url)
-                                
-                                assetFiles.append(assetFile)
-                                
-                                next()
-                            }
-                            
-                            foundLUT = true
-                            break
-                        }
-                    }
-                    if !foundLUT {
-                        next()
-                    }
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                guard let data: Data = try await loadData(as: .image, from: provider) else { continue }
+                guard let image = AMImage(data: data) else {
+                    throw DropError.badImageData
                 }
+                let assetFile = AMAssetImageFile(image: image)
+                assetFiles.append(assetFile)
+                
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                guard let url: URL = try await loadURL(as: .movie, from: provider) else { continue }
+                let name: String = url.deletingPathExtension().lastPathComponent
+                let assetFile = AMAssetURLFile(name: name, url: url)
+                assetFiles.append(assetFile)
                 
             } else {
-                completion(assetFiles)
-                return
+                if let lutType: UTType = AMAssetManager.AssetType.lut.types.first(where: { type in
+                    provider.hasItemConformingToTypeIdentifier(type.identifier)
+                }) {
+                    guard let url: URL = try await loadURL(as: lutType, from: provider) else { continue }
+                    let name: String = url.deletingPathExtension().lastPathComponent
+                    let assetFile = AMAssetURLFile(name: name, url: url)
+                    assetFiles.append(assetFile)
+                }
             }
         }
-        
-        next()
+        return assetFiles
     }
+    
+//    func dropMedia(providers: [NSItemProvider], completion: @escaping ([AMAssetFile]) -> ()) {
+//        Task {
+//            let assetFiles: [AMAssetFile] = try await dropMedia(providers: providers)
+//            await MainActor.run {
+//                completion(assetFiles)
+//            }
+//        }
+//    }
     
     func dropURLs(types: [UTType], providers: [NSItemProvider], asCopy: Bool) async throws -> [URL] {
         

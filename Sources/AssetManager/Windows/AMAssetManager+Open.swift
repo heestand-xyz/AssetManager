@@ -30,7 +30,7 @@ extension AMAssetManager {
     
     func openImage(
         directoryURL: URL?,
-        completion: @escaping (Result<AMAssetImageFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetImageFile?, Error>) -> ()
     ) {
         openImageAsURL(directoryURL: directoryURL) { result in
             switch result {
@@ -58,7 +58,7 @@ extension AMAssetManager {
     
     func openImageAsURL(
         directoryURL: URL?,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         openFile(
             title: "Image",
@@ -80,7 +80,7 @@ extension AMAssetManager {
 
     func openImagesAsURLs(
         directoryURL: URL?,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openFiles(
             title: "Images",
@@ -92,7 +92,7 @@ extension AMAssetManager {
     
     func openImages(
         directoryURL: URL?,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
             title: "Images",
@@ -118,7 +118,7 @@ extension AMAssetManager {
     
     func openVideo(
         directoryURL: URL?,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         openFile(
             title: "Video",
@@ -130,7 +130,7 @@ extension AMAssetManager {
     
     func openVideos(
         directoryURL: URL?,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         openFiles(
             title: "Videos",
@@ -143,7 +143,7 @@ extension AMAssetManager {
     func openMedia(
         autoImageConvert: Bool,
         directoryURL: URL?,
-        completion: @escaping (Result<AMAssetFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         openFile(
             title: "Media",
@@ -174,7 +174,7 @@ extension AMAssetManager {
     func openMedia(
         autoImageConvert: Bool,
         directoryURL: URL?,
-        completion: @escaping (Result<[AMAssetFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
             title: "Media",
@@ -203,7 +203,7 @@ extension AMAssetManager {
         title: String,
         directoryURL: URL?,
         allowedFileTypes: [UTType]?,
-        completion: @escaping (Result<AMAssetURLFile?, Error>) -> ()
+        completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         
         Task { @MainActor in
@@ -242,7 +242,7 @@ extension AMAssetManager {
         title: String,
         directoryURL: URL?,
         allowedFileTypes: [UTType]?,
-        completion: @escaping (Result<[AMAssetURLFile], Error>) -> ()
+        completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         
         Task { @MainActor in
@@ -281,7 +281,7 @@ extension AMAssetManager {
     func openFolder(
         title: String,
         directoryURL: URL?,
-        completion: @escaping (Result<URL?, Error>) -> ()
+        completion: @escaping @Sendable (Result<URL?, Error>) -> ()
     ) {
         
         Task { @MainActor in
