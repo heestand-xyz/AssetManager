@@ -36,7 +36,7 @@ import AssetManager
 
 struct ContentView: View {
     
-    @ObservedObject var assetManager: AMAssetManager
+    @Bindable var assetManager: AMAssetManager
 
     var body: some View {
         Button {
