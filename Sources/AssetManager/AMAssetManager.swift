@@ -140,25 +140,33 @@ public final class AMAssetManager: NSObject, Sendable {
             if type == .gif {
                 return AMAssetURLFile(name: name, url: url)
             } else if isRawImage(type: type) {
-                guard let data: Data = try? Data(contentsOf: url) else { return nil }
-                guard let rawFilter = CIRAWFilter(imageURL: url) else { return nil }
-                rawFilter.extendedDynamicRangeAmount = 2.0
-                guard let rawImage: CIImage = rawFilter.outputImage else { return nil }
-                #if os(macOS)
-                let rep = NSCIImageRep(ciImage: rawImage)
-                let image = NSImage(size: rep.size)
-                image.addRepresentation(rep)
-                #else
-                guard let cgImage: CGImage = try? TextureMap.cgImage(ciImage: rawImage, colorSpace: .sRGB, bits: ._16) else { return nil }
-                guard let image: UIImage = try? TextureMap.image(cgImage: cgImage) else {  return nil }
-                #endif
-                return AMAssetRawImageFile(name: name, format: format, image: image, data: data)
+                return rawImage(url: url)
             } else if type.conforms(to: .image) {
                 if let image: AMImage = AMImage(contentsOfFile: url.path) {
                     return AMAssetImageFile(name: name, image: image)
                 }
             }
             return nil
+        }
+        
+        public static func rawImage(url: URL) -> AMAssetRawImageFile? {
+            let name: String = url.deletingPathExtension().lastPathComponent
+            let format: String = url.pathExtension
+            guard let type = UTType(filenameExtension: format) else { return nil }
+            guard isRawImage(type: type) else { return nil }
+            guard let data: Data = try? Data(contentsOf: url) else { return nil }
+            guard let rawFilter = CIRAWFilter(imageURL: url) else { return nil }
+            rawFilter.extendedDynamicRangeAmount = 2.0
+            guard let rawImage: CIImage = rawFilter.outputImage else { return nil }
+            #if os(macOS)
+            let rep = NSCIImageRep(ciImage: rawImage)
+            let image = NSImage(size: rep.size)
+            image.addRepresentation(rep)
+            #else
+            guard let cgImage: CGImage = try? TextureMap.cgImage(ciImage: rawImage, colorSpace: .sRGB, bits: ._16) else { return nil }
+            guard let image: UIImage = try? TextureMap.image(cgImage: cgImage) else {  return nil }
+            #endif
+            return AMAssetRawImageFile(name: name, format: format, image: image, data: data)
         }
     }
     
