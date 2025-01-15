@@ -514,56 +514,62 @@ extension AMAssetManager {
     // MARK: File
 
     public func importFileURL(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil
     ) async throws -> URL? {
-        try await importFile(withExtension: fileExtension, directory: directory)?.url
+        try await importFile(title: title, withExtension: fileExtension, directory: directory)?.url
     }
 
     public func importFile(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil
     ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importFile(withExtension: fileExtension, directory: directory) { result in
+            importFile(title: title, withExtension: fileExtension, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFile(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        importFile(type: .file(extension: fileExtension), directory: directory, completion: completion)
+        importFile(title: title, type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
     
     public func importFileURL(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil
     ) async throws -> URL? {
-        try await importFile(type: type, directory: directory)?.url
+        try await importFile(title: title, type: type, directory: directory)?.url
     }
     
     public func importFile(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil
     ) async throws -> AMAssetURLFile? {
         try await withCheckedThrowingContinuation { continuation in
-            importFile(type: type, directory: directory) { result in
+            importFile(title: title, type: type, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFile(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         Task { @MainActor in
-            importAsset(type, from: .files(directory: directory), autoImageConvert: false) { result in
+            importAsset(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
                 switch result {
                 case .success(let assetFile):
                     guard let assetFile: AMAssetFile = assetFile else {
@@ -585,58 +591,64 @@ extension AMAssetManager {
     // MARK: Files
 
     public func importFileURLs(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil
     ) async throws -> [URL] {
-        let assetURLFiles: [AMAssetURLFile] = try await importFiles(withExtension: fileExtension, directory: directory)
+        let assetURLFiles: [AMAssetURLFile] = try await importFiles(title: title, withExtension: fileExtension, directory: directory)
         return assetURLFiles.map(\.url)
     }
     
     public func importFiles(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil
     ) async throws -> [AMAssetURLFile] {
         try await withCheckedThrowingContinuation { continuation in
-            importFiles(withExtension: fileExtension, directory: directory) { result in
+            importFiles(title: title, withExtension: fileExtension, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFiles(
+        title: String? = nil,
         withExtension fileExtension: String,
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        importFiles(type: .file(extension: fileExtension), directory: directory, completion: completion)
+        importFiles(title: title, type: .file(extension: fileExtension), directory: directory, completion: completion)
     }
     
     public func importFileURLs(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil
     ) async throws -> [URL] {
-        let assetURLFiles: [AMAssetURLFile] = try await importFiles(type: type, directory: directory)
+        let assetURLFiles: [AMAssetURLFile] = try await importFiles(title: title, type: type, directory: directory)
         return assetURLFiles.map(\.url)
     }
     
     public func importFiles(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil
     ) async throws -> [AMAssetURLFile] {
         try await withCheckedThrowingContinuation { continuation in
-            importFiles(type: type, directory: directory) { result in
+            importFiles(title: title, type: type, directory: directory) { result in
                 continuation.resume(with: result)
             }
         }
     }
     
     public func importFiles(
+        title: String? = nil,
         type: AssetType,
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         Task { @MainActor in
-            importAssets(type, from: .files(directory: directory), autoImageConvert: false) { result in
+            importAssets(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
                 switch result {
                 case .success(let assetFiles):
                     let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
@@ -696,11 +708,12 @@ extension AMAssetManager {
 extension AMAssetManager {
     
     public func selectFolder(
+        title: String = "Select Folder",
         directory: URL? = nil
     ) async throws -> URL? {
         try await withCheckedThrowingContinuation { continuation in
             Task { @MainActor [weak self] in
-                self?.selectFolder(directory: directory) { result in
+                self?.selectFolder(title: title, directory: directory) { result in
                     continuation.resume(with: result)
                 }
             }
@@ -709,11 +722,12 @@ extension AMAssetManager {
     
     @MainActor
     public func selectFolder(
+        title: String = "Select Folder",
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<URL?, Error>) -> ()
     ) {
         #if os(macOS)
-        openFolder(title: "Folder", directoryURL: directory, completion: completion)
+        openFolder(title: title, directoryURL: directory, completion: completion)
         #else
         folderSelectedCallback = { [weak self] url in
             self?.folderSelectedCallback = nil
@@ -1127,6 +1141,7 @@ extension AMAssetManager {
     
     @MainActor
     private func importAsset(
+        title: String? = nil,
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
@@ -1186,7 +1201,7 @@ extension AMAssetManager {
                     }
                 case .text:
                     openFile(
-                        title: "Open Text File",
+                        title: title ?? "Open Text File",
                         directoryURL: directoryURL,
                         allowedFileTypes: [.text]
                     ) { result in
@@ -1199,7 +1214,7 @@ extension AMAssetManager {
                     }
                 case .geometry:
                     openFile(
-                        title: "Open Geometry File",
+                        title: title ?? "Open Geometry File",
                         directoryURL: directoryURL,
                         allowedFileTypes: AssetType.geometry.types
                     ) { result in
@@ -1212,7 +1227,7 @@ extension AMAssetManager {
                     }
                 case .image3d:
                     openFile(
-                        title: "Open 3D Image File",
+                        title: title ?? "Open 3D Image File",
                         directoryURL: directoryURL,
                         allowedFileTypes: AssetType.image3d.types
                     ) { result in
@@ -1226,7 +1241,7 @@ extension AMAssetManager {
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFile(
-                        title: "Open \(fileExtension.uppercased()) File",
+                        title: title ?? "Open \(fileExtension.uppercased()) File",
                         directoryURL: directoryURL,
                         allowedFileTypes: [fileType]
                     ) { result in
@@ -1244,7 +1259,7 @@ extension AMAssetManager {
                 }
             } else {
                 openFile(
-                    title: "Open File",
+                    title: title ?? "Open File",
                     directoryURL: directoryURL,
                     allowedFileTypes: nil
                 ) { result in
@@ -1345,6 +1360,7 @@ extension AMAssetManager {
     
     @MainActor
     private func importAssets(
+        title: String? = nil,
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
@@ -1391,7 +1407,7 @@ extension AMAssetManager {
                     }
                 case .text:
                     openFiles(
-                        title: "Open Text Files",
+                        title: title ?? "Open Text Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: [.text]
                     ) { result in
@@ -1404,7 +1420,7 @@ extension AMAssetManager {
                     }
                 case .geometry:
                     openFiles(
-                        title: "Open Geometry Files",
+                        title: title ?? "Open Geometry Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: AssetType.geometry.types
                     ) { result in
@@ -1417,7 +1433,7 @@ extension AMAssetManager {
                     }
                 case .image3d:
                     openFiles(
-                        title: "Open 3D Image Files",
+                        title: title ?? "Open 3D Image Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: AssetType.image3d.types
                     ) { result in
@@ -1431,7 +1447,7 @@ extension AMAssetManager {
                 case .file(let fileExtension):
                     guard let fileType = UTType(filenameExtension: fileExtension) else { return }
                     openFiles(
-                        title: "Open \(fileExtension.uppercased()) Files",
+                        title: title ?? "Open \(fileExtension.uppercased()) Files",
                         directoryURL: directoryURL,
                         allowedFileTypes: [fileType]
                     ) { result in
@@ -1449,7 +1465,7 @@ extension AMAssetManager {
                 }
             } else {
                 openFiles(
-                    title: "Open Files",
+                    title: title ?? "Open Files",
                     directoryURL: directoryURL,
                     allowedFileTypes: nil
                 ) { result in
