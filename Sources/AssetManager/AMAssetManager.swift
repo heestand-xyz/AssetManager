@@ -236,7 +236,7 @@ public final class AMAssetManager: NSObject, Sendable {
         }
     }
     
-    public enum ImageAssetFormat {
+    public enum ImageAssetFormat: Sendable {
         case png
         case jpg(compressionQuality: CGFloat)
         var fileExtension: String {
