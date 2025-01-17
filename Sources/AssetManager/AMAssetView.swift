@@ -78,6 +78,7 @@ struct AMAssetView<Content: View>: View {
 #endif
             .sheet(isPresented: $assetManager.showPhotosPicker, content: {
                 PhotosView(filter: assetManager.photosFilter ?? .images,
+                           isSpatial: assetManager.photosIsSpatial ?? false,
                            multiSelect: assetManager.photosHasMultiSelect ?? false) { objects in
                     assetManager.photosSelectedCallback?(objects)
                 } cancelled: {

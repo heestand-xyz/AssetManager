@@ -18,6 +18,7 @@ import TextureMap
 struct PhotosView: ViewControllerRepresentable {
     
     let filter: PHPickerFilter
+    let isSpatial: Bool
     let multiSelect: Bool
     let pickedContent: ([Any]) -> ()
     let cancelled: () -> ()
@@ -45,16 +46,26 @@ struct PhotosView: ViewControllerRepresentable {
     func updateViewController(_ view: PHPickerViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(isSpatial: isSpatial)
     }
     
     final class Coordinator: PHPickerViewControllerDelegate, Sendable {
+        
+        enum PhotosAssetError: String, Error {
+            case spatialPhotoIsNotHEIC
+            case spatialURLNotFound
+        }
         
         var picker: PHPickerViewController!
         
         var pickedContent: (([Any]) -> ())?
         
         var cancelled: (() -> ())?
+        
+        let isSpatial: Bool
+        init(isSpatial: Bool) {
+            self.isSpatial = isSpatial
+        }
         
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             if results.isEmpty {
@@ -65,6 +76,34 @@ struct PhotosView: ViewControllerRepresentable {
                 var assets: [Any] = []
                 
                 for result in results {
+                    
+                    if isSpatial, result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.image.identifier) {
+                        do {
+                            let spatialType: UTType = .heic
+                            if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: spatialType.identifier) {
+                                let url: URL = try await withCheckedThrowingContinuation { continuation in
+                                    result.itemProvider.loadFileRepresentation(forTypeIdentifier: spatialType.identifier) { fileURL, error in
+                                        if let error = error {
+                                            continuation.resume(throwing: error)
+                                            return
+                                        }
+                                        guard let fileURL = fileURL else {
+                                            continuation.resume(throwing: PhotosAssetError.spatialURLNotFound)
+                                            return
+                                        }
+                                        continuation.resume(returning: fileURL)
+                                    }
+                                }
+                                let mappedURL = try Self.map(url: url)
+                                assets.append(mappedURL)
+                            } else {
+                                throw PhotosAssetError.spatialPhotoIsNotHEIC
+                            }
+                        } catch {
+                            print("Asset Manager Photos Error:", error)
+                        }
+                        continue
+                    }
                     
                     if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.gif.identifier) {
                         
@@ -88,7 +127,7 @@ struct PhotosView: ViewControllerRepresentable {
                                 }
                             }
                         }) {
-                            assets.append(url as Any)
+                            assets.append(url)
                         }
                         
                     } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.rawImage.identifier) {

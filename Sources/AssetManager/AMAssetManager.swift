@@ -95,6 +95,15 @@ public final class AMAssetManager: NSObject, Sendable {
             }
         }
         
+        public var isSpatial: Bool {
+            switch self {
+            case .spatialImage, .spatialVideo, .spatialMedia:
+                true
+            default:
+                false
+            }
+        }
+        
         public var filter: PHPickerFilter? {
             switch self {
             case .image:
@@ -165,6 +174,8 @@ public final class AMAssetManager: NSObject, Sendable {
             let format: String = url.pathExtension
             guard let type = UTType(filenameExtension: format) else { return nil }
             if type == .gif {
+                return AMAssetURLFile(name: name, url: url)
+            } else if type == .heic {
                 return AMAssetURLFile(name: name, url: url)
             } else if isRawImage(type: type) {
                 return rawImage(url: url)
@@ -275,6 +286,7 @@ public final class AMAssetManager: NSObject, Sendable {
     
     @MainActor var showPhotosPicker: Bool = false
     @MainActor @ObservationIgnored var photosFilter: PHPickerFilter?
+    @MainActor @ObservationIgnored var photosIsSpatial: Bool?
     @MainActor @ObservationIgnored var photosHasMultiSelect: Bool?
     @MainActor @ObservationIgnored var photosSelectedCallback: (([Any]) -> ())?
 }
@@ -1356,9 +1368,11 @@ extension AMAssetManager {
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
+            photosIsSpatial = type?.isSpatial ?? false
             photosHasMultiSelect = false
             photosSelectedCallback = { [weak self] objects in
                 self?.photosFilter = nil
+                self?.photosIsSpatial = nil
                 self?.photosHasMultiSelect = nil
                 self?.showPhotosPicker = false
                 self?.photosSelectedCallback = nil
@@ -1565,9 +1579,11 @@ extension AMAssetManager {
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
+            photosIsSpatial = type?.isSpatial ?? false
             photosHasMultiSelect = true
             photosSelectedCallback = { [weak self] objects in
                 self?.photosFilter = nil
+                self?.photosIsSpatial = nil
                 self?.photosHasMultiSelect = nil
                 self?.showPhotosPicker = false
                 self?.photosSelectedCallback = nil
