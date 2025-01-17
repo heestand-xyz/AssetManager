@@ -15,14 +15,14 @@ import PhotosUI
 import MultiViews
 import TextureMap
 
-struct PhotosView: ViewRepresentable {
+struct PhotosView: ViewControllerRepresentable {
     
     let filter: PHPickerFilter
     let multiSelect: Bool
     let pickedContent: ([Any]) -> ()
     let cancelled: () -> ()
     
-    func makeView(context: Context) -> MPView {
+    func makeViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
         configuration.filter = filter
         configuration.selectionLimit = multiSelect ? 0 : 1
@@ -39,10 +39,10 @@ struct PhotosView: ViewRepresentable {
             }
         }
         context.coordinator.picker = picker
-        return picker.view
+        return picker
     }
     
-    func updateView(_ view: MPView, context: Context) {}
+    func updateViewController(_ view: PHPickerViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator()
