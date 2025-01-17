@@ -84,6 +84,9 @@ struct AMAssetView<Content: View>: View {
                     assetManager.photosSelectedCallback?([])
                 }
                 .ignoresSafeArea()
+#if os(macOS)
+                .frame(minWidth: 800, minHeight: 400)
+#endif
             })
 #if os(iOS) || os(visionOS)
             .sheet(isPresented: $assetManager.showShare, onDismiss: {
