@@ -53,7 +53,7 @@ struct PhotosView: ViewControllerRepresentable {
         
         enum PhotosAssetError: String, Error {
             case spatialPhotoIsNotHEIC
-            case spatialURLNotFound
+            case spatialFileNotFound
         }
         
         var picker: PHPickerViewController!
@@ -80,22 +80,23 @@ struct PhotosView: ViewControllerRepresentable {
                     if isSpatial, result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.image.identifier) {
                         do {
                             let spatialType: UTType = .heic
+                            let spatialFormat: String = "heic"
                             if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: spatialType.identifier) {
-                                let url: URL = try await withCheckedThrowingContinuation { continuation in
-                                    result.itemProvider.loadFileRepresentation(forTypeIdentifier: spatialType.identifier) { fileURL, error in
+                                let data: Data = try await withCheckedThrowingContinuation { continuation in
+                                    result.itemProvider.loadDataRepresentation(forTypeIdentifier: spatialType.identifier) { data, error in
                                         if let error = error {
                                             continuation.resume(throwing: error)
                                             return
                                         }
-                                        guard let fileURL = fileURL else {
-                                            continuation.resume(throwing: PhotosAssetError.spatialURLNotFound)
+                                        guard let data else {
+                                            continuation.resume(throwing: PhotosAssetError.spatialFileNotFound)
                                             return
                                         }
-                                        continuation.resume(returning: fileURL)
+                                        continuation.resume(returning: data)
                                     }
                                 }
-                                let mappedURL = try Self.map(url: url)
-                                assets.append(mappedURL)
+                                let url: URL = try Self.url(data: data, name: "Spatial Image", format: spatialFormat)
+                                assets.append(url)
                             } else {
                                 throw PhotosAssetError.spatialPhotoIsNotHEIC
                             }
@@ -219,6 +220,22 @@ struct PhotosView: ViewControllerRepresentable {
             url.stopAccessingSecurityScopedResource()
             
             return newURL
+        }
+        
+        private static func url(data: Data, name: String, format: String) throws -> URL {
+            
+            let folderURL: URL = FileManager.default.temporaryDirectory
+                .appending(component: "temp-media")
+                .appending(component: "\(UUID())")
+            if !FileManager.default.fileExists(atPath: folderURL.path) {
+                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+            }
+            
+            let url: URL = folderURL.appending(path: "\(name).\(format)")
+            
+            try data.write(to: url)
+            
+            return url
         }
     }
 }
