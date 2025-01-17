@@ -34,9 +34,12 @@ public final class AMAssetManager: NSObject, Sendable {
     public enum AssetType: Sendable {
         
         case image
+        case spatialImage
         case video
+        case spatialVideo
         case audio
         case media
+        case spatialMedia
         case lut
         case text
         case geometry
@@ -47,12 +50,18 @@ public final class AMAssetManager: NSObject, Sendable {
             switch self {
             case .image:
                 return [.image]
+            case .spatialImage:
+                return [.image]
             case .video:
+                return [.movie]
+            case .spatialVideo:
                 return [.movie]
             case .audio:
                 return [.audio]
             case .media:
                 return Self.image.types + Self.video.types + Self.audio.types
+            case .spatialMedia:
+                return Self.image.types + Self.video.types
             case .lut:
                 var types: [UTType] = []
                 if let cube = UTType(filenameExtension: "cube") {
@@ -90,10 +99,28 @@ public final class AMAssetManager: NSObject, Sendable {
             switch self {
             case .image:
                 return .images
+            case .spatialImage:
+                if #available(iOS 18.0, macOS 15.0, *) {
+                    return .all(of: [.images, .spatialMedia])
+                } else {
+                    return .images
+                }
             case .video:
                 return .videos
+            case .spatialVideo:
+                if #available(iOS 18.0, macOS 15.0, *) {
+                    return .all(of: [.videos, .spatialMedia])
+                } else {
+                    return .videos
+                }
             case .media:
                 return .any(of: [.images, .videos])
+            case .spatialMedia:
+                if #available(iOS 18.0, macOS 15.0, *) {
+                    return .all(of: [.any(of: [.images, .videos]), .spatialMedia])
+                } else {
+                    return .any(of: [.images, .videos])
+                }
             case .file, .lut, .audio, .text, .geometry, .image3d:
                 return nil
             }
@@ -340,6 +367,30 @@ extension AMAssetManager {
         let autoImageConvert: Bool = !source.isFiles
         Task { @MainActor in
             importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
+        }
+    }
+    
+    /// Auto converted to an image when `source` is not `.files`
+    public func importMultipleSpatialMedia(
+        from source: AssetSource,
+        autoImageConvert: Bool? = nil
+    ) async throws -> [AMAssetFile] {
+        try await withCheckedThrowingContinuation { continuation in
+            importMultipleSpatialMedia(from: source, autoImageConvert: autoImageConvert) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    /// Auto converted to an image when `source` is not `.files`
+    public func importMultipleSpatialMedia(
+        from source: AssetSource,
+        autoImageConvert: Bool? = nil,
+        completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
+    ) {
+        let autoImageConvert: Bool = !source.isFiles
+        Task { @MainActor in
+            importAssets(.spatialMedia, from: source, autoImageConvert: autoImageConvert, completion: completion)
         }
     }
     
@@ -1152,7 +1203,7 @@ extension AMAssetManager {
             #if os(macOS)
             if let type = type {
                 switch type {
-                case .image:
+                case .image, .spatialImage:
                     if autoImageConvert {
                         openImage(
                             directoryURL: directoryURL
@@ -1176,7 +1227,7 @@ extension AMAssetManager {
                             }
                         }
                     }
-                case .video:
+                case .video, .spatialVideo:
                     openVideo(
                         directoryURL: directoryURL
                     ) { result in
@@ -1187,7 +1238,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .media:
+                case .media, .spatialMedia:
                     openMedia(
                         autoImageConvert: autoImageConvert,
                         directoryURL: directoryURL
@@ -1371,7 +1422,7 @@ extension AMAssetManager {
             #if os(macOS)
             if let type = type {
                 switch type {
-                case .image:
+                case .image, .spatialImage:
                     openImages(
                         directoryURL: directoryURL
                     ) { result in
@@ -1382,7 +1433,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .video:
+                case .video, .spatialVideo:
                     openVideos(
                         directoryURL: directoryURL
                     ) { result in
@@ -1393,7 +1444,7 @@ extension AMAssetManager {
                             completion(.failure(error))
                         }
                     }
-                case .media:
+                case .media, .spatialMedia:
                     openMedia(
                         autoImageConvert: autoImageConvert,
                         directoryURL: directoryURL
