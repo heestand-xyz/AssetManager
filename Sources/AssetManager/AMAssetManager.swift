@@ -109,7 +109,7 @@ public final class AMAssetManager: NSObject, Sendable {
             case .image:
                 return .images
             case .spatialImage:
-                if #available(iOS 18.0, macOS 15.0, *) {
+                if #available(iOS 18.0, macOS 15.0, visionOS 2.0, *) {
                     return .all(of: [.images, .spatialMedia])
                 } else {
                     return .images
@@ -117,7 +117,7 @@ public final class AMAssetManager: NSObject, Sendable {
             case .video:
                 return .videos
             case .spatialVideo:
-                if #available(iOS 18.0, macOS 15.0, *) {
+                if #available(iOS 18.0, macOS 15.0, visionOS 2.0, *) {
                     return .all(of: [.videos, .spatialMedia])
                 } else {
                     return .videos
@@ -125,7 +125,7 @@ public final class AMAssetManager: NSObject, Sendable {
             case .media:
                 return .any(of: [.images, .videos])
             case .spatialMedia:
-                if #available(iOS 18.0, macOS 15.0, *) {
+                if #available(iOS 18.0, macOS 15.0, visionOS 2.0, *) {
                     return .all(of: [.any(of: [.images, .videos]), .spatialMedia])
                 } else {
                     return .any(of: [.images, .videos])
