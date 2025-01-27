@@ -422,9 +422,8 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping @Sendable (Result<AMAssetImageFile?, Error>) -> ()
     ) {
-        let autoImageConvert: Bool = !source.isFiles
         Task { @MainActor in
-            self.importAsset(.image, from: source, autoImageConvert: autoImageConvert) { result in
+            self.importAsset(.image, from: source, autoImageConvert: true) { result in
                 switch result {
                 case .success(let assetFile):
                     guard let assetFile: AMAssetFile = assetFile else {
