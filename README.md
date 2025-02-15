@@ -5,7 +5,7 @@ Import, export and share files on iOS and macOS
 ## Install
 
 ```swift
-.package(url: "https://github.com/heestand-xyz/AssetManager", from: "1.0.1"),
+.package(url: "https://github.com/heestand-xyz/AssetManager", from: "2.0.0"),
 ```
 
 ## Setup
