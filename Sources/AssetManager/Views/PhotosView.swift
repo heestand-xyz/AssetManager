@@ -171,7 +171,7 @@ struct PhotosView: ViewControllerRepresentable {
                         }
                         
                     } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.movie.identifier) {
-                        
+#if os(macOS)
                         if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
                                 if let error {
@@ -194,6 +194,30 @@ struct PhotosView: ViewControllerRepresentable {
                         }) {
                             assets.append(url as Any)
                         }
+#else
+                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
+                            result.itemProvider.loadDataRepresentation(forTypeIdentifier: UTType.movie.identifier) { data, error in
+                                if let error {
+                                    continuation.resume(throwing: error)
+                                    return
+                                }
+                                guard let data: Data else {
+                                    continuation.resume(returning: nil)
+                                    return
+                                }
+                                Task { @MainActor in
+                                    do {
+                                        let url = try Self.url(data: data, name: "Video", format: "mov")
+                                        continuation.resume(returning: url)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
+                                }
+                            }
+                        }) {
+                            assets.append(url as Any)
+                        }
+#endif
                     }
                 }
                 await MainActor.run {
@@ -204,20 +228,20 @@ struct PhotosView: ViewControllerRepresentable {
         
         private static func map(url: URL) throws -> URL {
             
-            let _ = url.startAccessingSecurityScopedResource()
-            
             let folderURL: URL = FileManager.default.temporaryDirectory
                 .appending(component: "temp-media")
                 .appending(component: "\(UUID())")
-            if !FileManager.default.fileExists(atPath: folderURL.path) {
-                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-            }
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
             
             let newURL: URL = folderURL.appending(path: url.lastPathComponent)
             
+            let access = url.startAccessingSecurityScopedResource()
+            
             try FileManager.default.copyItem(at: url, to: newURL)
             
-            url.stopAccessingSecurityScopedResource()
+            if access {
+                url.stopAccessingSecurityScopedResource()
+            }
             
             return newURL
         }
@@ -227,9 +251,7 @@ struct PhotosView: ViewControllerRepresentable {
             let folderURL: URL = FileManager.default.temporaryDirectory
                 .appending(component: "temp-media")
                 .appending(component: "\(UUID())")
-            if !FileManager.default.fileExists(atPath: folderURL.path) {
-                try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-            }
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
             
             let url: URL = folderURL.appending(path: "\(name).\(format)")
             
