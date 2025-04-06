@@ -29,9 +29,9 @@ struct PhotosView: ViewControllerRepresentable {
         configuration.selectionLimit = multiSelect ? 0 : 1
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = context.coordinator
-        context.coordinator.pickedContent = { url in
+        context.coordinator.pickedContent = { objects in
             DispatchQueue.main.async {
-                pickedContent(url)
+                pickedContent(objects)
             }
         }
         context.coordinator.cancelled = {
@@ -171,30 +171,31 @@ struct PhotosView: ViewControllerRepresentable {
                         }
                         
                     } else if result.itemProvider.hasRepresentationConforming(toTypeIdentifier: UTType.movie.identifier) {
-#if os(macOS)
-                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
-                            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
-                                if let error {
-                                    continuation.resume(throwing: error)
-                                    return
-                                }
-                                guard let url: URL else {
-                                    continuation.resume(returning: nil)
-                                    return
-                                }
-                                Task { @MainActor in
-                                    do {
-                                        let newURL = try Self.map(url: url)
-                                        continuation.resume(returning: newURL)
-                                    } catch {
-                                        continuation.resume(throwing: error)
-                                    }
-                                }
-                            }
-                        }) {
-                            assets.append(url as Any)
-                        }
-#else
+//#if os(macOS)
+//                        if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
+//                            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+//                                if let error {
+//                                    continuation.resume(throwing: error)
+//                                    return
+//                                }
+//                                guard let url: URL else {
+//                                    continuation.resume(returning: nil)
+//                                    return
+//                                }
+//                                Task { @MainActor in
+//                                    do {
+//                                        let newURL = try Self.map(url: url)
+//                                        continuation.resume(returning: newURL)
+//                                    } catch {
+//                                        print("-------->", error)
+//                                        continuation.resume(throwing: error)
+//                                    }
+//                                }
+//                            }
+//                        }) {
+//                            assets.append(url as Any)
+//                        }
+//#else
                         if let url: URL = try? await withCheckedThrowingContinuation({ continuation in
                             result.itemProvider.loadDataRepresentation(forTypeIdentifier: UTType.movie.identifier) { data, error in
                                 if let error {
@@ -217,7 +218,7 @@ struct PhotosView: ViewControllerRepresentable {
                         }) {
                             assets.append(url as Any)
                         }
-#endif
+//#endif
                     }
                 }
                 await MainActor.run {
