@@ -13,6 +13,8 @@ import UIKit
 import UniformTypeIdentifiers
 import PhotosUI
 import TextureMap
+import CoreImage
+import ImageIO
 
 @Observable
 public final class AMAssetManager: NSObject, Sendable {
@@ -1957,6 +1959,33 @@ extension NSImage {
         guard let representation = tiffRepresentation else { return nil }
         guard let bitmap = NSBitmapImageRep(data: representation) else { return nil }
         return bitmap.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
+    }
+
+    func heicData() -> Data? {
+        guard let tiffData = tiffRepresentation,
+              let ciImage = CIImage(data: tiffData) else {
+            return nil
+        }
+        
+        let context = CIContext()
+        
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            return nil
+        }
+        
+        let data = NSMutableData()
+        
+        guard let destination = CGImageDestinationCreateWithData(data as CFMutableData, AVFileType.heic as CFString, 1, nil) else {
+            return nil
+        }
+        
+        CGImageDestinationAddImage(destination, cgImage, nil)
+        
+        guard CGImageDestinationFinalize(destination) else {
+            return nil
+        }
+        
+        return data as Data
     }
 }
 
