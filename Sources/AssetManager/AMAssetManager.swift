@@ -888,6 +888,61 @@ extension AMAssetManager {
     }
     
     @discardableResult
+    public func saveImageDataToFiles(
+        _ data: Data,
+        name: String,
+        as format: ImageAssetFormat
+    ) async throws -> URL? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveImageDataToFiles(data, name: name, as: format) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveImageDataToFiles(
+        _ data: Data,
+        name: String,
+        as format: ImageAssetFormat,
+        completion: @escaping @Sendable (Result<URL?, Error>) -> ()
+    ) {
+        
+        #if os(macOS)
+        saveFile(data: data, title: "Save Image", name: "\(name).\(format.fileExtension)") { result in
+            completion(result)
+        }
+        #else
+        
+        do {
+            
+            let folderURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent(UUID().uuidString)
+            
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
+            
+            let url: URL = folderURL
+                .appendingPathComponent("\(name).\(format.fileExtension)")
+            
+//            _ = url.startAccessingSecurityScopedResource()
+            try data.write(to: url)
+//            url.stopAccessingSecurityScopedResource()
+            
+            Task { @MainActor in
+                saveToFiles(url: url) { result in
+                    
+                    try? FileManager.default.removeItem(at: url)
+                    
+                    completion(result)
+                }
+            }
+        } catch {
+            print("Asset Manager - Temporary Image File Save Failed:", error)
+            completion(.failure(error))
+        }
+        #endif
+    }
+    
+    @discardableResult
     public func saveImagesToFiles(
         _ images: [AMImage],
         name: String,
@@ -1107,6 +1162,46 @@ extension AMAssetManager {
         UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted), nil)
         Task { @MainActor in
             imageSaveCompletionHandler = completion
+        }
+    }
+   
+    public func saveImageDataToPhotos(
+        _ data: Data,
+        as format: ImageAssetFormat
+    ) async throws {
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
+            saveImageDataToPhotos(data, as: format) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume()
+            }
+        }
+    }
+    
+    public func saveImageDataToPhotos(
+        _ data: Data,
+        as format: ImageAssetFormat,
+        completion: @escaping @Sendable (Error?) -> ()
+    ) {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appending(component: UUID().uuidString)
+            .appendingPathExtension(format.fileExtension)
+        do {
+            try data.write(to: tempURL)
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCreationRequest.forAsset()
+                request.addResource(with: .photo, fileURL: tempURL, options: nil)
+            } completionHandler: { success, error in
+                if let error {
+                    completion(error)
+                } else {
+                    completion(nil)
+                }
+            }
+        } catch {
+            completion(error)
         }
     }
     
