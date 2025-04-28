@@ -239,12 +239,15 @@ public final class AMAssetManager: NSObject, Sendable {
     public enum ImageAssetFormat: Sendable {
         case png
         case jpg(compressionQuality: CGFloat)
+        case heic
         var fileExtension: String {
             switch self {
             case .png:
-                return "png"
+                "png"
             case .jpg:
-                return "jpg"
+                "jpg"
+            case .heic:
+                "heic"
             }
         }
     }
@@ -841,6 +844,12 @@ extension AMAssetManager {
                 return
             }
             data = jpgData
+        case .heic:
+            guard let heicData = image.heicData() else {
+                completion(.failure(AssetError.badImageData))
+                return
+            }
+            data = heicData
         }
         
         #if os(macOS)
@@ -913,6 +922,12 @@ extension AMAssetManager {
                     return
                 }
                 data.append(jpgData)
+            case .heic:
+                guard let heicData = image.heicData() else {
+                    completion(.failure(AssetError.badImageData))
+                    return
+                }
+                data.append(heicData)
             }
         }
         
