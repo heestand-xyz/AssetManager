@@ -60,7 +60,19 @@ extension AMAssetManager {
         }
     }
     
-    func saveFilesInFolder(
+    public func saveFilesInFolder(
+        _ items: [(data: Data, name: String)],
+        title: String? = nil,
+        directory: URL? = nil
+    ) async throws -> [URL]? {
+        try await withCheckedThrowingContinuation { continuation in
+            saveFilesInFolder(items, title: title, directory: directory) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func saveFilesInFolder(
         _ items: [(data: Data, name: String)],
         title: String? = nil,
         directory: URL? = nil,
