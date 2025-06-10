@@ -43,18 +43,18 @@ extension AMAssetManager {
             savePanel.canCreateDirectories = true
             savePanel.nameFieldStringValue = name
             
-            savePanel.begin { response in
-                
-                guard response != .cancel, let url: URL = savePanel.url else {
-                    completion?(.success(nil))
-                    return
-                }
-                
-                do {
-                    try data.write(to: url)
-                    completion?(.success(url))
-                } catch {
-                    completion?(.failure(error))
+            savePanel.begin { [savePanel] response in
+                Task { @MainActor in
+                    guard response != .cancel, let url: URL = savePanel.url else {
+                        completion?(.success(nil))
+                        return
+                    }
+                    do {
+                        try data.write(to: url)
+                        completion?(.success(url))
+                    } catch {
+                        completion?(.failure(error))
+                    }
                 }
             }
         }
