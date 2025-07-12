@@ -187,7 +187,6 @@ struct PhotosView: ViewControllerRepresentable {
 //                                        let newURL = try Self.map(url: url)
 //                                        continuation.resume(returning: newURL)
 //                                    } catch {
-//                                        print("-------->", error)
 //                                        continuation.resume(throwing: error)
 //                                    }
 //                                }
