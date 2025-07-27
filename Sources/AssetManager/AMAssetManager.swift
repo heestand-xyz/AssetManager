@@ -1129,6 +1129,28 @@ extension AMAssetManager {
         #endif
     }
     
+    @discardableResult
+    public func saveToFiles(
+        folderURL: URL,
+        directory: URL? = nil,
+        title: String? = nil,
+        asCopy: Bool = true,
+    ) async throws -> Bool {
+        guard let parentFolderURL: URL = try await selectFolder(title: title ?? "Save Folder", directory: directory) else { return false }
+        var destinationURL = parentFolderURL.appendingPathComponent(folderURL.lastPathComponent)
+        var count: Int = 1
+        while FileManager.default.fileExists(atPath: destinationURL.path(percentEncoded: false)) {
+            count += 1
+            destinationURL = parentFolderURL.appendingPathComponent("\(folderURL.lastPathComponent) (\(count))")
+        }
+        if asCopy {
+            try FileManager.default.copyItem(at: folderURL, to: destinationURL)
+        } else {
+            try FileManager.default.moveItem(at: folderURL, to: destinationURL)
+        }
+        return true
+    }
+    
     #if os(iOS) || os(visionOS)
    
     public func saveImageToPhotos(
