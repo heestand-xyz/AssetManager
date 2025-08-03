@@ -1135,8 +1135,8 @@ extension AMAssetManager {
         directory: URL? = nil,
         title: String? = nil,
         asCopy: Bool = true,
-    ) async throws -> Bool {
-        guard let parentFolderURL: URL = try await selectFolder(title: title ?? "Save Folder", directory: directory) else { return false }
+    ) async throws -> URL? {
+        guard let parentFolderURL: URL = try await selectFolder(title: title ?? "Save Folder", directory: directory) else { return nil }
         var destinationURL = parentFolderURL.appendingPathComponent(folderURL.lastPathComponent)
         var count: Int = 1
         while FileManager.default.fileExists(atPath: destinationURL.path(percentEncoded: false)) {
@@ -1148,7 +1148,7 @@ extension AMAssetManager {
         } else {
             try FileManager.default.moveItem(at: folderURL, to: destinationURL)
         }
-        return true
+        return destinationURL
     }
     
     #if os(iOS) || os(visionOS)
