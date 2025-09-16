@@ -94,8 +94,10 @@ struct AMAssetView<Content: View>: View {
                 assetManager.shareItems = nil
             }) {
                 if let items: [Any] = assetManager.shareItems {
-                    ShareView(items: items)
-                        .ignoresSafeArea()
+                    ShareView(items: items) { error in
+                        assetManager.shareCompleted?(error)
+                    }
+                    .ignoresSafeArea()
                 }
             }
 #endif

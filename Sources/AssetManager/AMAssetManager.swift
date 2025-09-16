@@ -16,6 +16,7 @@ import TextureMap
 import CoreImage
 import ImageIO
 
+@MainActor
 @Observable
 public final class AMAssetManager: NSObject, Sendable {
     
@@ -254,46 +255,75 @@ public final class AMAssetManager: NSObject, Sendable {
         }
     }
     
-    #if os(iOS) || os(visionOS)
+    /// Some view is presented for opening or saving assets.
+    public var isPresenting: Bool {
+#if os(iOS) || os(visionOS)
+        if isShowing { return true }
+#endif
+        if showPhotosPicker { return true }
+#if os(macOS)
+        if isOpening { return true }
+        if isSaving { return true }
+#endif
+        return false
+    }
     
-    @MainActor var showOpenFilesPicker: Bool = false
-    @MainActor var filesTypes: [UTType]?
-    @MainActor var filesHasMultiSelect: Bool?
-    @MainActor var filesDirectoryURL: URL?
-    @MainActor @ObservationIgnored var filesSelectedCallback: (([URL]) -> ())?
+#if os(iOS) || os(visionOS)
     
-    @MainActor var showOpenFolderPicker: Bool = false
-    @MainActor var folderDirectoryURL: URL?
-    @MainActor @ObservationIgnored var folderSelectedCallback: ((URL?) -> ())?
+    private var isShowing: Bool {
+        if showOpenFilesPicker { return true }
+        if showOpenFolderPicker { return true }
+        if showSaveFilePicker { return true }
+        if showShare { return true }
+#if os(iOS)
+        if showCameraPicker { return true }
+#endif
+        return false
+    }
     
-    @MainActor var showSaveFilePicker: Bool = false
-    @MainActor var saveFileAsCopy: Bool = true
-    @MainActor var saveDirectoryURL: URL?
-    @MainActor var fileUrls: [URL]?
-    @MainActor @ObservationIgnored var saveFileCompletion: (([URL]?) -> ())?
+    var showOpenFilesPicker: Bool = false
+    var filesTypes: [UTType]?
+    var filesHasMultiSelect: Bool?
+    var filesDirectoryURL: URL?
+    @ObservationIgnored var filesSelectedCallback: (([URL]) -> ())?
     
-    @MainActor var showShare: Bool = false
-    @MainActor var shareItems: [Any]?
+    var showOpenFolderPicker: Bool = false
+    var folderDirectoryURL: URL?
+    @ObservationIgnored var folderSelectedCallback: ((URL?) -> ())?
     
-    #if os(iOS)
-    @MainActor var showCameraPicker: Bool = false
-    @MainActor var cameraMode: UIImagePickerController.CameraCaptureMode?
-    @MainActor @ObservationIgnored var cameraImageCallback: ((UIImage) -> ())?
-    @MainActor @ObservationIgnored var cameraVideoCallback: ((URL) -> ())?
-    @MainActor @ObservationIgnored var cameraCancelCallback: (() -> ())?
-    #endif
+    var showSaveFilePicker: Bool = false
+    var saveFileAsCopy: Bool = true
+    var saveDirectoryURL: URL?
+    var fileUrls: [URL]?
+    @ObservationIgnored var saveFileCompletion: (([URL]?) -> ())?
     
-    @MainActor @ObservationIgnored private var imageSaveCompletionHandler: ((Error?) -> ())?
-    @MainActor @ObservationIgnored private var videoSaveCompletionHandler: ((Error?) -> ())?
+    var showShare: Bool = false
+    var shareItems: [Any]?
+    @ObservationIgnored var shareCompleted: ((Error?) -> ())?
     
-    #endif
+#if os(iOS)
+    var showCameraPicker: Bool = false
+    var cameraMode: UIImagePickerController.CameraCaptureMode?
+    @ObservationIgnored var cameraImageCallback: ((UIImage) -> ())?
+    @ObservationIgnored var cameraVideoCallback: ((URL) -> ())?
+    @ObservationIgnored var cameraCancelCallback: (() -> ())?
+#endif
     
+    @ObservationIgnored private var imageSaveCompletionHandler: ((Error?) -> ())?
+    @ObservationIgnored private var videoSaveCompletionHandler: ((Error?) -> ())?
     
-    @MainActor var showPhotosPicker: Bool = false
-    @MainActor @ObservationIgnored var photosFilter: PHPickerFilter?
-    @MainActor @ObservationIgnored var photosIsSpatial: Bool?
-    @MainActor @ObservationIgnored var photosHasMultiSelect: Bool?
-    @MainActor @ObservationIgnored var photosSelectedCallback: (([Any]) -> ())?
+#endif
+    
+    var showPhotosPicker: Bool = false
+    @ObservationIgnored var photosFilter: PHPickerFilter?
+    @ObservationIgnored var photosIsSpatial: Bool?
+    @ObservationIgnored var photosHasMultiSelect: Bool?
+    @ObservationIgnored var photosSelectedCallback: (([Any]) -> ())?
+    
+#if os(macOS)
+    var isOpening: Bool = false
+    var isSaving: Bool = false
+#endif
 }
 
 // MARK: - Share
@@ -302,31 +332,49 @@ extension AMAssetManager {
     
     #if os(iOS) || os(visionOS)
     
-    public func share(image: AMImage) {
-        Task { @MainActor in
-            shareItems = [image]
-            showShare = true
+    public func share(image: AMImage) async throws {
+        try await share([image])
+    }
+    
+    public func share(images: [AMImage]) async throws {
+        try await share(images)
+    }
+    
+    public func share(url: URL) async throws {
+        try await share([url])
+    }
+    
+    public func share(urls: [URL]) async throws {
+        try await share(urls)
+    }
+    
+    enum ShareError: LocalizedError {
+        case alreadySharing
+        var errorDescription: String? {
+            switch self {
+            case .alreadySharing:
+                "Asset Manager - Already sharing."
+            }
         }
     }
     
-    public func share(images: [AMImage]) {
-        Task { @MainActor in
-            shareItems = images
-            showShare = true
+    public func share(_ items: [Any]) async throws {
+        guard !showShare else {
+            throw ShareError.alreadySharing
         }
-    }
-    
-    public func share(url: URL) {
-        Task { @MainActor in
-            shareItems = [url]
-            showShare = true
-        }
-    }
-    
-    public func share(urls: [URL]) {
-        Task { @MainActor in
-            shareItems = urls
-            showShare = true
+        shareItems = items
+        showShare = true
+        let _: Void = try await withCheckedThrowingContinuation { [weak self] continuation in
+            self?.shareCompleted = { error in
+                self?.showShare = false
+                self?.shareItems = []
+                self?.shareCompleted = nil
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
         }
     }
     
@@ -358,9 +406,7 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        Task { @MainActor in
-            importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
-        }
+        importAsset(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
     /// Auto converted to an image when `source` is not `.files`
@@ -382,9 +428,7 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        Task { @MainActor in
-            importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
-        }
+        importAssets(.media, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
     /// Auto converted to an image when `source` is not `.files`
@@ -406,9 +450,7 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         let autoImageConvert: Bool = !source.isFiles
-        Task { @MainActor in
-            importAssets(.spatialMedia, from: source, autoImageConvert: autoImageConvert, completion: completion)
-        }
+        importAssets(.spatialMedia, from: source, autoImageConvert: autoImageConvert, completion: completion)
     }
     
     // MARK: Images
@@ -427,22 +469,20 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping @Sendable (Result<AMAssetImageFile?, Error>) -> ()
     ) {
-        Task { @MainActor in
-            self.importAsset(.image, from: source, autoImageConvert: true) { result in
-                switch result {
-                case .success(let assetFile):
-                    guard let assetFile: AMAssetFile = assetFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    guard let assetImageFile: AMAssetImageFile = assetFile as? AMAssetImageFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    completion(.success(assetImageFile))
-                case .failure(let error):
-                    completion(.failure(error))
+        self.importAsset(.image, from: source, autoImageConvert: true) { result in
+            switch result {
+            case .success(let assetFile):
+                guard let assetFile: AMAssetFile = assetFile else {
+                    completion(.success(nil))
+                    return
                 }
+                guard let assetImageFile: AMAssetImageFile = assetFile as? AMAssetImageFile else {
+                    completion(.success(nil))
+                    return
+                }
+                completion(.success(assetImageFile))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -479,22 +519,20 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
-        Task { @MainActor in
-            self.importAssets(.image, from: source, autoImageConvert: true) { result in
-                switch result {
-                case .success(let assetFiles):
-                    let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
-                        if let imageFile = file as? AMAssetImageFile {
-                            return imageFile
-                        } else if let rawImageFile = file as? AMAssetRawImageFile {
-                            return rawImageFile
-                        }
-                        return nil
-                    })
-                    completion(.success(assetFiles))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
+        self.importAssets(.image, from: source, autoImageConvert: true) { result in
+            switch result {
+            case .success(let assetFiles):
+                let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
+                    if let imageFile = file as? AMAssetImageFile {
+                        return imageFile
+                    } else if let rawImageFile = file as? AMAssetRawImageFile {
+                        return rawImageFile
+                    }
+                    return nil
+                })
+                completion(.success(assetFiles))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -515,22 +553,20 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        Task { @MainActor in
-            importAsset(.video, from: source) { result in
-                switch result {
-                case .success(let assetFile):
-                    guard let assetFile: AMAssetFile = assetFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    completion(.success(assetURLFile))
-                case .failure(let error):
-                    completion(.failure(error))
+        importAsset(.video, from: source) { result in
+            switch result {
+            case .success(let assetFile):
+                guard let assetFile: AMAssetFile = assetFile else {
+                    completion(.success(nil))
+                    return
                 }
+                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                    completion(.success(nil))
+                    return
+                }
+                completion(.success(assetURLFile))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -549,20 +585,18 @@ extension AMAssetManager {
         from source: AssetSource,
         completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        Task { @MainActor in
-            self.importAssets(.video, from: source) { result in
-                switch result {
-                case .success(let assetFiles):
-                    let urlFiles: [AMAssetURLFile] = assetFiles.compactMap({ file in
-                        if let urlFile = file as? AMAssetURLFile {
-                            return urlFile
-                        }
-                        return nil
-                    })
-                    completion(.success(urlFiles))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
+        self.importAssets(.video, from: source) { result in
+            switch result {
+            case .success(let assetFiles):
+                let urlFiles: [AMAssetURLFile] = assetFiles.compactMap({ file in
+                    if let urlFile = file as? AMAssetURLFile {
+                        return urlFile
+                    }
+                    return nil
+                })
+                completion(.success(urlFiles))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -635,22 +669,20 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        Task { @MainActor in
-            importAsset(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
-                switch result {
-                case .success(let assetFile):
-                    guard let assetFile: AMAssetFile = assetFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    completion(.success(assetURLFile))
-                case .failure(let error):
-                    completion(.failure(error))
+        importAsset(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
+            switch result {
+            case .success(let assetFile):
+                guard let assetFile: AMAssetFile = assetFile else {
+                    completion(.success(nil))
+                    return
                 }
+                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                    completion(.success(nil))
+                    return
+                }
+                completion(.success(assetURLFile))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -714,15 +746,13 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
-        Task { @MainActor in
-            importAssets(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
-                switch result {
-                case .success(let assetFiles):
-                    let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
-                    completion(.success(assetURLFiles))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
+        importAssets(title: title, type, from: .files(directory: directory), autoImageConvert: false) { result in
+            switch result {
+            case .success(let assetFiles):
+                let assetURLFiles: [AMAssetURLFile] = assetFiles.compactMap({ $0 as? AMAssetURLFile })
+                completion(.success(assetURLFiles))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -749,22 +779,20 @@ extension AMAssetManager {
         directory: URL? = nil,
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
-        Task { @MainActor in
-            importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
-                switch result {
-                case .success(let assetFile):
-                    guard let assetFile: AMAssetFile = assetFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
-                        completion(.success(nil))
-                        return
-                    }
-                    completion(.success(assetURLFile))
-                case .failure(let error):
-                    completion(.failure(error))
+        importAsset(nil, from: .files(directory: directory), autoImageConvert: false) { result in
+            switch result {
+            case .success(let assetFile):
+                guard let assetFile: AMAssetFile = assetFile else {
+                    completion(.success(nil))
+                    return
                 }
+                guard let assetURLFile: AMAssetURLFile = assetFile as? AMAssetURLFile else {
+                    completion(.success(nil))
+                    return
+                }
+                completion(.success(assetURLFile))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
@@ -874,13 +902,11 @@ extension AMAssetManager {
             try data.write(to: url)
 //            url.stopAccessingSecurityScopedResource()
             
-            Task { @MainActor in
-                saveToFiles(url: url) { result in
-                    
-                    try? FileManager.default.removeItem(at: url)
-                    
-                    completion(result)
-                }
+            saveToFiles(url: url) { result in
+                
+                try? FileManager.default.removeItem(at: url)
+                
+                completion(result)
             }
         } catch {
             print("Asset Manager - Temporary Image File Save Failed:", error)
@@ -929,13 +955,11 @@ extension AMAssetManager {
             try data.write(to: url)
 //            url.stopAccessingSecurityScopedResource()
             
-            Task { @MainActor in
-                saveToFiles(url: url) { result in
-                    
-                    try? FileManager.default.removeItem(at: url)
-                    
-                    completion(result)
-                }
+            saveToFiles(url: url) { result in
+                
+                try? FileManager.default.removeItem(at: url)
+                
+                completion(result)
             }
         } catch {
             print("Asset Manager - Temporary Image File Save Failed:", error)
@@ -1014,14 +1038,12 @@ extension AMAssetManager {
                 urls.append(url)
             }
             
-            Task { @MainActor in
-                let urls = urls
-                saveToFiles(urls: urls) { result in
-                    for url in urls {
-                        try? FileManager.default.removeItem(at: url)
-                    }
-                    completion(result)
+            let _urls = urls
+            saveToFiles(urls: urls) { result in
+                for url in _urls {
+                    try? FileManager.default.removeItem(at: url)
                 }
+                completion(result)
             }
         } catch {
             print("Asset Manager - Temporary Images File Save Failed:", error)
@@ -1192,9 +1214,7 @@ extension AMAssetManager {
             image = dataImage
         }
         UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted), nil)
-        Task { @MainActor in
-            imageSaveCompletionHandler = completion
-        }
+        imageSaveCompletionHandler = completion
     }
    
     public func saveImageDataToPhotos(
@@ -1266,10 +1286,8 @@ extension AMAssetManager {
     @objc func imageSaveCompleted(_ image: UIImage,
                                   didFinishSavingWithError error: Error?,
                                   contextInfo: UnsafeRawPointer) {
-        Task { @MainActor in
-            imageSaveCompletionHandler?(error)
-            imageSaveCompletionHandler = nil
-        }
+        imageSaveCompletionHandler?(error)
+        imageSaveCompletionHandler = nil
     }
     
     public func saveVideoToPhotos(
@@ -1296,9 +1314,7 @@ extension AMAssetManager {
             return
         }
         UISaveVideoAtPathToSavedPhotosAlbum(path, self, #selector(videoSaveCompleted), nil)
-        Task { @MainActor in
-            videoSaveCompletionHandler = completion
-        }
+        videoSaveCompletionHandler = completion
 //        requestAuthorization {
 //            PHPhotoLibrary.shared().performChanges({
 //                let request = PHAssetCreationRequest.forAsset()
@@ -1314,10 +1330,8 @@ extension AMAssetManager {
     @objc func videoSaveCompleted(_ videoPath: String?,
                                   didFinishSavingWithError error: Error?,
                                   contextInfo: UnsafeMutableRawPointer?) {
-        Task { @MainActor in
-            videoSaveCompletionHandler?(error)
-            videoSaveCompletionHandler = nil
-        }
+        videoSaveCompletionHandler?(error)
+        videoSaveCompletionHandler = nil
     }
     
     public func requestAuthorization(
@@ -1502,9 +1516,7 @@ extension AMAssetManager {
                 }
                 completion(.success(AMAssetURLFile(name: name, url: url)))
             }
-            Task { @MainActor in
-                self.showOpenFilesPicker = true
-            }
+            self.showOpenFilesPicker = true
             #endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
@@ -1713,9 +1725,7 @@ extension AMAssetManager {
                     completion(.failure(error))
                 }
             }
-            Task { @MainActor in
-                self.showOpenFilesPicker = true
-            }
+            self.showOpenFilesPicker = true
             #endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }

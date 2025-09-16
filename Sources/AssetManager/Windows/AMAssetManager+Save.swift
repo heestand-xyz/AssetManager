@@ -36,6 +36,8 @@ extension AMAssetManager {
                   name: String,
                   completion: (@Sendable (Result<URL?, Error>) -> ())? = nil) {
         
+        isSaving = true
+        
         DispatchQueue.main.async {
             
             let savePanel = NSSavePanel()
@@ -43,8 +45,9 @@ extension AMAssetManager {
             savePanel.canCreateDirectories = true
             savePanel.nameFieldStringValue = name
             
-            savePanel.begin { [savePanel] response in
+            savePanel.begin { [weak self, savePanel] response in
                 Task { @MainActor in
+                    self?.isSaving = false
                     guard response != .cancel, let url: URL = savePanel.url else {
                         completion?(.success(nil))
                         return

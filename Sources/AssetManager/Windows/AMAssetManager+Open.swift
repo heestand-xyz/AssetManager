@@ -206,6 +206,8 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<AMAssetURLFile?, Error>) -> ()
     ) {
         
+        isOpening = true
+        
         Task { @MainActor in
     
             let openPanel = NSOpenPanel()
@@ -217,8 +219,9 @@ extension AMAssetManager {
             openPanel.canCreateDirectories = true
             openPanel.allowedContentTypes = allowedFileTypes ?? []
             
-            openPanel.begin { response in
+            openPanel.begin { [weak self] response in
                 Task { @MainActor in
+                    self?.isOpening = false
                     guard response == .OK else {
                         completion(.success(nil))
                         return
@@ -247,6 +250,8 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<[AMAssetURLFile], Error>) -> ()
     ) {
         
+        isOpening = true
+        
         Task { @MainActor in
             
             let openPanel = NSOpenPanel()
@@ -258,8 +263,9 @@ extension AMAssetManager {
             openPanel.canCreateDirectories = true
             openPanel.allowedContentTypes = allowedFileTypes ?? []
             
-            openPanel.begin { response in
+            openPanel.begin { [weak self] response in
                 Task { @MainActor in
+                    self?.isOpening = false
                     guard response == .OK else {
                         completion(.success([]))
                         return
@@ -288,6 +294,8 @@ extension AMAssetManager {
         completion: @escaping @Sendable (Result<URL?, Error>) -> ()
     ) {
         
+        isOpening = true
+        
         Task { @MainActor in
             
             let openPanel = NSOpenPanel()
@@ -299,8 +307,9 @@ extension AMAssetManager {
             openPanel.canCreateDirectories = true
             openPanel.allowedContentTypes = []
             
-            openPanel.begin { response in
+            openPanel.begin { [weak self] response in
                 Task { @MainActor in
+                    self?.isOpening = false
                     guard response == .OK else {
                         completion(.success(nil))
                         return
