@@ -34,7 +34,7 @@ public final class AMAssetManager: NSObject, Sendable {
         }
     }
     
-    public enum AssetType: Sendable {
+    public enum AssetType: Hashable, Sendable {
         
         case image
         case spatialImage
@@ -49,7 +49,38 @@ public final class AMAssetManager: NSObject, Sendable {
         case image3d
         case file(extension: String)
         
+        private static var allStaticCases: [Self] {
+            [
+                .image,
+                .spatialImage,
+                .video,
+                .spatialVideo,
+                .audio,
+                .media,
+                .spatialMedia,
+                .lut,
+                .text,
+                .geometry,
+                .image3d,
+            ]
+        }
+        
         public var types: [UTType] {
+            if let types: [UTType] = Self.typeCache[self] {
+                return types
+            }
+            return getTypes()
+        }
+        
+        static let typeCache: [Self: [UTType]] = {
+            var typeCache: [Self: [UTType]] = [:]
+            for staticCase in allStaticCases {
+                typeCache[staticCase] = staticCase.getTypes()
+            }
+            return typeCache
+        }()
+        
+        private func getTypes() -> [UTType] {
             switch self {
             case .image:
                 return [.image]
@@ -62,9 +93,9 @@ public final class AMAssetManager: NSObject, Sendable {
             case .audio:
                 return [.audio]
             case .media:
-                return Self.image.types + Self.video.types + Self.audio.types
+                return Self.image.getTypes() + Self.video.getTypes() + Self.audio.getTypes()
             case .spatialMedia:
-                return Self.image.types + Self.video.types
+                return Self.image.getTypes() + Self.video.getTypes()
             case .lut:
                 var types: [UTType] = []
                 if let cube = UTType(filenameExtension: "cube") {
