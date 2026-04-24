@@ -20,7 +20,9 @@ struct OpenFilesView: UIViewControllerRepresentable {
     let cancelled: () -> ()
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types)
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: types == [] ? [.data] : types
+        )
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = multiSelect
         picker.directoryURL = directoryURL
