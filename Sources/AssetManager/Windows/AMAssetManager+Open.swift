@@ -30,6 +30,7 @@ extension AMAssetManager {
     
     func openImage(
         directoryURL: URL?,
+        willProcess: @escaping @MainActor () -> () = {},
         completion: @escaping @Sendable (Result<AMAssetImageFile?, Error>) -> ()
     ) {
         openImageAsURL(directoryURL: directoryURL) { result in
@@ -39,16 +40,21 @@ extension AMAssetManager {
                     completion(.success(nil))
                     return
                 }
-                do {
-                    let data: Data = try Data(contentsOf: assetURLFile.url)
-                    guard let image = NSImage(data: data) else {
-                        completion(.failure(AssetError.badImageData))
-                        return
+                Task.detached {
+                    await MainActor.run {
+                        willProcess()
                     }
-                    let imageFile = AMAssetImageFile(name: assetURLFile.name, image: image)
-                    completion(.success(imageFile))
-                } catch {
-                    completion(.failure(error))
+                    do {
+                        let data: Data = try Data(contentsOf: assetURLFile.url)
+                        guard let image = NSImage(data: data) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        let imageFile = AMAssetImageFile(name: assetURLFile.name, image: image)
+                        completion(.success(imageFile))
+                    } catch {
+                        completion(.failure(error))
+                    }
                 }
             case .failure(let error):
                 completion(.failure(error))
@@ -92,6 +98,7 @@ extension AMAssetManager {
     
     func openImages(
         directoryURL: URL?,
+        willProcess: @escaping @MainActor ([AMAssetURLFile]) -> () = { _ in },
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
@@ -101,15 +108,20 @@ extension AMAssetManager {
         ) { result in
             switch result {
             case .success(let urlFiles):
-                var imageFiles: [AMAssetFile] = []
-                for urlFile in urlFiles {
-                    guard let imageFile = AMAssetManager.AssetType.image(url: urlFile.url) else {
-                        completion(.failure(AssetError.badImageData))
-                        return
+                Task.detached {
+                    await MainActor.run {
+                        willProcess(urlFiles)
                     }
-                    imageFiles.append(imageFile)
+                    var imageFiles: [AMAssetFile] = []
+                    for urlFile in urlFiles {
+                        guard let imageFile = AMAssetManager.AssetType.image(url: urlFile.url) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        imageFiles.append(imageFile)
+                    }
+                    completion(.success(imageFiles))
                 }
-                completion(.success(imageFiles))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -143,6 +155,7 @@ extension AMAssetManager {
     func openMedia(
         autoImageConvert: Bool,
         directoryURL: URL?,
+        willProcess: @escaping @MainActor () -> () = {},
         completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         openFile(
@@ -153,15 +166,21 @@ extension AMAssetManager {
             switch result {
             case .success(let urlFile):
                 if let urlFile {
-                    if autoImageConvert, AssetType.isImage(url: urlFile.url) {
-                        guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
-                            completion(.failure(AssetError.badImageData))
+                    Task.detached {
+                        await MainActor.run {
+                            willProcess()
+                        }
+                        await Task.yield()
+                        if autoImageConvert, AssetType.isImage(url: urlFile.url) {
+                            guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
+                                completion(.failure(AssetError.badImageData))
+                                return
+                            }
+                            completion(.success(assetFile))
                             return
                         }
-                        completion(.success(assetFile))
-                        return
+                        completion(.success(urlFile))
                     }
-                    completion(.success(urlFile))
                 } else {
                     completion(.success(nil))
                 }
@@ -174,6 +193,7 @@ extension AMAssetManager {
     func openMedia(
         autoImageConvert: Bool,
         directoryURL: URL?,
+        willProcess: @escaping @MainActor ([AMAssetURLFile]) -> () = { _ in },
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         openFiles(
@@ -183,16 +203,22 @@ extension AMAssetManager {
         ) { result in
             switch result {
             case .success(let urlFiles):
-                let files: [AMAssetFile] = urlFiles.compactMap { urlFile in
-                    if autoImageConvert, AssetType.isImage(url: urlFile.url) {
-                        guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
-                            return nil
-                        }
-                        return assetFile
+                Task.detached {
+                    await MainActor.run {
+                        willProcess(urlFiles)
                     }
-                    return urlFile
+                    await Task.yield()
+                    let files: [AMAssetFile] = urlFiles.compactMap { urlFile in
+                        if autoImageConvert, AssetType.isImage(url: urlFile.url) {
+                            guard let assetFile: AMAssetFile = AssetType.image(url: urlFile.url) else {
+                                return nil
+                            }
+                            return assetFile
+                        }
+                        return urlFile
+                    }
+                    completion(.success(files))
                 }
-                completion(.success(files))
             case .failure(let error):
                 completion(.failure(error))
             }

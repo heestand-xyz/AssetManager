@@ -537,10 +537,11 @@ extension AMAssetManager {
     #endif
     
     public func importImages(
-        from source: AssetSource
+        from source: AssetSource,
+        willProcess: @escaping @MainActor (Int) -> () = { _ in }
     ) async throws -> [AMAssetFile] {
         try await withCheckedThrowingContinuation { continuation in
-            importImages(from: source) { result in
+            importImages(from: source, willProcess: willProcess) { result in
                 continuation.resume(with: result)
             }
         }
@@ -548,9 +549,10 @@ extension AMAssetManager {
     
     public func importImages(
         from source: AssetSource,
+        willProcess: @escaping @MainActor (Int) -> () = { _ in },
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
-        self.importAssets(.image, from: source, autoImageConvert: true) { result in
+        self.importAssets(.image, from: source, autoImageConvert: true, willProcess: willProcess) { result in
             switch result {
             case .success(let assetFiles):
                 let assetFiles: [AMAssetFile] = assetFiles.compactMap({ file in
@@ -1388,23 +1390,26 @@ extension AMAssetManager {
 
 extension AMAssetManager {
     
+    /// Will process is not guaranteed to be called, it's mainly called before processing an image.
     @MainActor
     private func importAsset(
         title: String? = nil,
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
+        willProcess: @escaping @MainActor () -> () = {},
         completion: @escaping @Sendable (Result<AMAssetFile?, Error>) -> ()
     ) {
         switch source {
         case .files(let directoryURL):
-            #if os(macOS)
+#if os(macOS)
             if let type = type {
                 switch type {
                 case .image, .spatialImage:
                     if autoImageConvert {
                         openImage(
-                            directoryURL: directoryURL
+                            directoryURL: directoryURL,
+                            willProcess: willProcess
                         ) { result in
                             switch result {
                             case .success(let assetImageFile):
@@ -1439,7 +1444,8 @@ extension AMAssetManager {
                 case .media, .spatialMedia:
                     openMedia(
                         autoImageConvert: autoImageConvert,
-                        directoryURL: directoryURL
+                        directoryURL: directoryURL,
+                        willProcess: willProcess
                     ) { result in
                         switch result {
                         case .success(let assetFile):
@@ -1520,7 +1526,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS) || os(visionOS)
+#elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = false
             filesDirectoryURL = directoryURL
@@ -1534,21 +1540,26 @@ extension AMAssetManager {
                     completion(.success(nil))
                     return
                 }
-                let name: String = url.deletingPathExtension().lastPathComponent
-                guard url.startAccessingSecurityScopedResource() else { return }
-                defer { url.stopAccessingSecurityScopedResource() }
-                if autoImageConvert, AssetType.isImage(url: url) {
-                    guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
-                        completion(.failure(AssetError.badImageData))
+                Task {
+                    await MainActor.run {
+                        willProcess()
+                    }
+                    let name: String = url.deletingPathExtension().lastPathComponent
+                    guard url.startAccessingSecurityScopedResource() else { return }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if autoImageConvert, AssetType.isImage(url: url) {
+                        guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        completion(.success(assetFile))
                         return
                     }
-                    completion(.success(assetFile))
-                    return
+                    completion(.success(AMAssetURLFile(name: name, url: url)))
                 }
-                completion(.success(AMAssetURLFile(name: name, url: url)))
             }
             self.showOpenFilesPicker = true
-            #endif
+#endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
@@ -1564,24 +1575,29 @@ extension AMAssetManager {
                     completion(.success(nil))
                     return
                 }
-                if let image: AMImage = object as? AMImage {
-                    completion(.success(AMAssetImageFile(name: nil, image: image)))
-                    return
-                }
-                guard let url: URL = object as? URL else {
-                    completion(.failure(AssetError.badPhotosObject))
-                    return
-                }
-                if autoImageConvert, AssetType.isImage(url: url) {
-                    guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
-                        completion(.failure(AssetError.badImageData))
+                Task {
+                    await MainActor.run {
+                        willProcess()
+                    }
+                    if let image: AMImage = object as? AMImage {
+                        completion(.success(AMAssetImageFile(name: nil, image: image)))
                         return
                     }
-                    completion(.success(assetFile))
-                    return
+                    guard let url: URL = object as? URL else {
+                        completion(.failure(AssetError.badPhotosObject))
+                        return
+                    }
+                    if autoImageConvert, AssetType.isImage(url: url) {
+                        guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                            completion(.failure(AssetError.badImageData))
+                            return
+                        }
+                        completion(.success(assetFile))
+                        return
+                    }
+                    let name: String = url.deletingPathExtension().lastPathComponent
+                    completion(.success(AMAssetURLFile(name: name, url: url)))
                 }
-                let name: String = url.deletingPathExtension().lastPathComponent
-                completion(.success(AMAssetURLFile(name: name, url: url)))
             }
             showPhotosPicker = true
         case .camera:
@@ -1607,22 +1623,25 @@ extension AMAssetManager {
         }
     }
     
+    /// Will process is not guaranteed to be called, it's mainly called before processing images.
     @MainActor
     private func importAssets(
         title: String? = nil,
         _ type: AssetType?,
         from source: AssetSource,
         autoImageConvert: Bool = false,
+        willProcess: @escaping @MainActor (Int) -> () = { _ in },
         completion: @escaping @Sendable (Result<[AMAssetFile], Error>) -> ()
     ) {
         switch source {
         case .files(let directoryURL):
-            #if os(macOS)
+#if os(macOS)
             if let type = type {
                 switch type {
                 case .image, .spatialImage:
                     openImages(
-                        directoryURL: directoryURL
+                        directoryURL: directoryURL,
+                        willProcess: { willProcess($0.count) }
                     ) { result in
                         switch result {
                         case .success(let assetImageFiles):
@@ -1645,7 +1664,8 @@ extension AMAssetManager {
                 case .media, .spatialMedia:
                     openMedia(
                         autoImageConvert: autoImageConvert,
-                        directoryURL: directoryURL
+                        directoryURL: directoryURL,
+                        willProcess: { willProcess($0.count) }
                     ) { result in
                         switch result {
                         case .success(let assetFiles):
@@ -1726,7 +1746,7 @@ extension AMAssetManager {
                     }
                 }
             }
-            #elseif os(iOS) || os(visionOS)
+#elseif os(iOS) || os(visionOS)
             filesTypes = type?.types ?? []
             filesHasMultiSelect = true
             filesDirectoryURL = directoryURL
@@ -1736,28 +1756,33 @@ extension AMAssetManager {
                 self?.filesDirectoryURL = nil
                 self?.showOpenFilesPicker = false
                 self?.filesSelectedCallback = nil
-                do {
-                    let files: [AMAssetFile] = try urls.map { url in
-                        let name: String = url.deletingPathExtension().lastPathComponent
-                        guard url.startAccessingSecurityScopedResource() else {
-                            throw AssetError.badURLAccess
-                        }
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        if autoImageConvert, AssetType.isImage(url: url) {
-                            guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
-                                throw AssetError.badImageData
-                            }
-                            return assetFile
-                        }
-                        return AMAssetURLFile(name: name, url: url)
+                Task {
+                    await MainActor.run {
+                        willProcess(urls.count)
                     }
-                    completion(.success(files))
-                } catch {
-                    completion(.failure(error))
+                    do {
+                        let files: [AMAssetFile] = try urls.map { url in
+                            let name: String = url.deletingPathExtension().lastPathComponent
+                            guard url.startAccessingSecurityScopedResource() else {
+                                throw AssetError.badURLAccess
+                            }
+                            defer { url.stopAccessingSecurityScopedResource() }
+                            if autoImageConvert, AssetType.isImage(url: url) {
+                                guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                                    throw AssetError.badImageData
+                                }
+                                return assetFile
+                            }
+                            return AMAssetURLFile(name: name, url: url)
+                        }
+                        completion(.success(files))
+                    } catch {
+                        completion(.failure(error))
+                    }
                 }
             }
             self.showOpenFilesPicker = true
-            #endif
+#endif
         case .photos:
             guard let filter: PHPickerFilter = type?.filter else { return }
             photosFilter = filter
@@ -1769,25 +1794,30 @@ extension AMAssetManager {
                 self?.photosHasMultiSelect = nil
                 self?.showPhotosPicker = false
                 self?.photosSelectedCallback = nil
-                do {
-                    let files: [AMAssetFile] = try objects.map { object in
-                        if autoImageConvert, let image = object as? AMImage {
-                            return AMAssetImageFile(name: nil, image: image)
-                        }
-                        guard let url: URL = object as? URL else {
-                            throw AssetError.badPhotosObject
-                        }
-                        if autoImageConvert, AssetType.isImage(url: url) {
-                            guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
-                                throw AssetError.badImageData
+                Task {
+                    await MainActor.run {
+                        willProcess(objects.count)
+                    }
+                    do {
+                        let files: [AMAssetFile] = try objects.map { object in
+                            if autoImageConvert, let image = object as? AMImage {
+                                return AMAssetImageFile(name: nil, image: image)
                             }
-                            return assetFile
+                            guard let url: URL = object as? URL else {
+                                throw AssetError.badPhotosObject
+                            }
+                            if autoImageConvert, AssetType.isImage(url: url) {
+                                guard let assetFile: AMAssetFile = AssetType.image(url: url) else {
+                                    throw AssetError.badImageData
+                                }
+                                return assetFile
+                            }
+                            return AMAssetURLFile(url: url)
                         }
-                        return AMAssetURLFile(url: url)
-                     }
-                    completion(.success(files))
-                } catch {
-                    completion(.failure(error))
+                        completion(.success(files))
+                    } catch {
+                        completion(.failure(error))
+                    }
                 }
             }
             showPhotosPicker = true
