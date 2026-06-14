@@ -1561,7 +1561,10 @@ extension AMAssetManager {
             self.showOpenFilesPicker = true
 #endif
         case .photos:
-            guard let filter: PHPickerFilter = type?.filter else { return }
+            guard let filter: PHPickerFilter = type?.filter else {
+                completion(.success(nil))
+                return
+            }
             photosFilter = filter
             photosIsSpatial = type?.isSpatial ?? false
             photosHasMultiSelect = false
@@ -1756,6 +1759,10 @@ extension AMAssetManager {
                 self?.filesDirectoryURL = nil
                 self?.showOpenFilesPicker = false
                 self?.filesSelectedCallback = nil
+                guard !urls.isEmpty else {
+                    completion(.success([]))
+                    return
+                }
                 Task {
                     await MainActor.run {
                         willProcess(urls.count)
@@ -1784,7 +1791,10 @@ extension AMAssetManager {
             self.showOpenFilesPicker = true
 #endif
         case .photos:
-            guard let filter: PHPickerFilter = type?.filter else { return }
+            guard let filter: PHPickerFilter = type?.filter else {
+                completion(.success([]))
+                return
+            }
             photosFilter = filter
             photosIsSpatial = type?.isSpatial ?? false
             photosHasMultiSelect = true
@@ -1794,6 +1804,10 @@ extension AMAssetManager {
                 self?.photosHasMultiSelect = nil
                 self?.showPhotosPicker = false
                 self?.photosSelectedCallback = nil
+                guard !objects.isEmpty else {
+                    completion(.success([]))
+                    return
+                }
                 Task {
                     await MainActor.run {
                         willProcess(objects.count)

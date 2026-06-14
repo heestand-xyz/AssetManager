@@ -218,6 +218,8 @@ struct PhotosView: ViewControllerRepresentable {
                             assets.append(url as Any)
                         }
 //#endif
+                    } else {
+                        print("Unknown media type result: \(result)")
                     }
                 }
                 await MainActor.run {
