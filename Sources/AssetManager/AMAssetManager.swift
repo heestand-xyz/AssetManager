@@ -229,15 +229,25 @@ public final class AMAssetManager: NSObject, Sendable {
             guard let data: Data = try? Data(contentsOf: url) else { return nil }
             guard let rawFilter = CIRAWFilter(imageURL: url) else { return nil }
             rawFilter.extendedDynamicRangeAmount = 2.0
+            // TODO: Set version to 9 for new ML noise reducation (a bit heavy)
+//            if rawFilter.supportedDecoderVersions.contains(.version9) {
+//                rawFilter.decoderVersion = .version9
+//            }
+            // TODO: Set these for linear interpolation:
+//            rawFilter.baselineExposure = 0.0
+//            rawFilter.shadowBias = 0.0
+//            rawFilter.boostAmount = 0.0
+//            rawFilter.localToneMapAmount = 0.0
+//            rawFilter.isGamutMappingEnabled = false
             guard let rawImage: CIImage = rawFilter.outputImage else { return nil }
-            #if os(macOS)
+#if os(macOS)
             let rep = NSCIImageRep(ciImage: rawImage)
             let image = NSImage(size: rep.size)
             image.addRepresentation(rep)
-            #else
+#else
             guard let cgImage: CGImage = try? TextureMap.cgImage(ciImage: rawImage, colorSpace: .sRGB, bits: ._16) else { return nil }
             guard let image: UIImage = try? TextureMap.image(cgImage: cgImage) else {  return nil }
-            #endif
+#endif
             return AMAssetRawImageFile(name: name, format: format, image: image, data: data)
         }
     }
